@@ -82,6 +82,64 @@ export class NaverHTMLParser {
     console.log('\n=== HTML 파싱 시작 ===');
     console.log(`HTML 길이: ${html.length} 바이트`);
     
+    const NON_BLOG_CATEGORIES = [
+      '숏텐츠',
+      '네이버 클립',
+      'NAVER 클립',
+      '짧은 즐거움 네이버 클립',
+      'NAVER NOW',
+    ];
+    
+    const footerTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
+    const headerTitles = $('[class*="fds-comps-header-headline"]').toArray();
+    
+    const candidateTitles = [...footerTitles, ...headerTitles];
+    console.log(`제목 후보 요소 개수: ${candidateTitles.length} (footer: ${footerTitles.length}, header: ${headerTitles.length})`);
+    
+    const smartBlockTitles = candidateTitles.filter(titleElement => {
+      const $title = $(titleElement);
+      const text = $title.text().trim();
+      
+      if (!text || text.length > 100) return false;
+      
+      if (NON_BLOG_CATEGORIES.some(excluded => text.includes(excluded))) {
+        console.log(`  ✗ 블로그 무관 카테고리 제외: "${text}"`);
+        return false;
+      }
+      
+      let $container = $title.closest('div');
+      let depth = 0;
+      while ($container.length > 0 && $container.find('a[href*="blog.naver.com"]').length === 0 && depth < 15) {
+        $container = $container.parent();
+        depth++;
+      }
+      
+      const hasBlogLinks = $container.length > 0 && $container.find('a[href*="blog.naver.com"]').length > 0;
+      if (hasBlogLinks) {
+        console.log(`  ✓ 스마트블록 발견: "${text}" (블로그 링크 ${$container.find('a[href*="blog.naver.com"]').length}개)`);
+      }
+      
+      return hasBlogLinks;
+    });
+    
+    console.log(`스마트블록 제목 개수: ${smartBlockTitles.length}`);
+
+    for (const titleElement of smartBlockTitles) {
+      const $title = $(titleElement);
+      const categoryName = $title.text().trim();
+      
+      let $container = $title.closest('div');
+      let depth = 0;
+      while ($container.length > 0 && $container.find('a[href*="blog.naver.com"]').length === 0 && depth < 15) {
+        $container = $container.parent();
+        depth++;
+      }
+      
+      if ($container.length === 0) {
+        continue;
+      }
+
+      const links = $container.find('a[href*="blog.naver.com"]').toArray();
       const categoryBlogs: BlogResult[] = [];
       const categorySeenUrls = new Set<string>();
       
