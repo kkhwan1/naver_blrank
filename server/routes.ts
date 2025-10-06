@@ -4,11 +4,13 @@ import { storage } from "./storage";
 import { insertKeywordSchema } from "@shared/schema";
 import { NaverAPIClient } from "./naver-client";
 import { SmartBlockParser } from "./smartblock-parser";
+import { NaverHTMLParser } from "./html-parser";
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 const naverClient = new NaverAPIClient();
 const smartBlockParser = new SmartBlockParser();
+const htmlParser = new NaverHTMLParser();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/keywords', async (_req, res) => {
@@ -89,6 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/measure/:id', async (req, res) => {
     try {
       const keywordId = parseInt(req.params.id);
+      const method = (req.query.method as string) || 'serpapi';
       const keyword = await storage.getKeyword(keywordId);
 
       if (!keyword) {
@@ -98,9 +101,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startTime = Date.now();
 
       try {
-        const searchResult = await naverClient.searchNaver(keyword.keyword);
+        let blogResults = [];
+        let searchMethod = method;
+
+        if (method === 'html-parser') {
+          const htmlResult = await htmlParser.searchNaver(keyword.keyword);
+          blogResults = htmlResult.blogResults;
+          searchMethod = 'html-parser';
+        } else {
+          const searchResult = await naverClient.searchNaver(keyword.keyword);
+          blogResults = searchResult.blogResults;
+          searchMethod = 'serpapi';
+        }
         
-        if (searchResult.blogResults.length === 0) {
+        if (blogResults.length === 0) {
           const measurement = await storage.createMeasurement({
             keywordId: keyword.id,
             measuredAt: new Date(),
@@ -110,12 +124,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             durationMs: Date.now() - startTime,
           });
 
-          return res.json(measurement);
+          return res.json({ ...measurement, method: searchMethod });
         }
 
         const rankResult = smartBlockParser.findRank(
           keyword.targetUrl,
-          searchResult.blogResults
+          blogResults
         );
 
         const measurement = await storage.createMeasurement({
@@ -127,7 +141,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           durationMs: Date.now() - startTime,
         });
 
-        res.json(measurement);
+        res.json({ 
+          ...measurement, 
+          method: searchMethod,
+          debug: {
+            totalBlogsFound: blogResults.length,
+            topBlogs: blogResults.slice(0, 3).map(b => ({
+              url: b.url,
+              title: b.title,
+            })),
+          }
+        });
       } catch (error) {
         const measurement = await storage.createMeasurement({
           keywordId: keyword.id,
@@ -139,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           durationMs: Date.now() - startTime,
         });
 
-        res.json(measurement);
+        res.json({ ...measurement, method: method, error: error instanceof Error ? error.message : '알 수 없는 오류' });
       }
     } catch (error) {
       console.error('측정 오류:', error);

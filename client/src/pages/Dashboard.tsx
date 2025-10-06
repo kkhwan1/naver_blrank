@@ -76,16 +76,17 @@ export default function Dashboard() {
   });
 
   const measureMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, method }: { id: string; method: string }) => {
       setMeasuringId(id);
-      return apiRequest('POST', `/api/measure/${id}`);
+      return apiRequest('POST', `/api/measure/${id}?method=${method}`);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/keywords'] });
       toast({
         title: '측정 완료',
-        description: '스마트블록 순위 측정이 완료되었습니다.',
+        description: `순위 측정 완료 (방식: ${data.method === 'serpapi' ? 'SerpAPI' : 'HTML 파싱'})`,
       });
+      console.log('측정 결과:', data);
       setMeasuringId(null);
     },
     onError: (error: Error) => {
@@ -122,8 +123,8 @@ export default function Dashboard() {
     addKeywordMutation.mutate(data);
   };
 
-  const handleMeasureKeyword = (id: string) => {
-    measureMutation.mutate(id);
+  const handleMeasureKeyword = (id: string, method: string = 'serpapi') => {
+    measureMutation.mutate({ id, method });
   };
 
   const keywordsData: KeywordData[] = keywords.map((k) => ({
