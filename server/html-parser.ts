@@ -17,16 +17,21 @@ export class NaverHTMLParser {
     this.cookies = {
       'NNB': 'ECHGGL2ZR7AGO',
       'nx_ssl': '2',
+      'NACT': '1',
     };
 
     this.headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
       'Accept-Language': 'ko,en-US;q=0.9,en;q=0.8',
       'Accept-Encoding': 'gzip, deflate, br',
       'Referer': 'https://search.naver.com/',
-      'DNT': '1',
-      'Connection': 'keep-alive',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'same-origin',
+      'Sec-Fetch-User': '?1',
       'Upgrade-Insecure-Requests': '1',
     };
   }
@@ -66,13 +71,16 @@ export class NaverHTMLParser {
     const blogResults: BlogResult[] = [];
     const seenUrls = new Set<string>();
 
-    const smartBlockContainers = $('div[class*="fds-grid-layout"]').toArray();
+    const smartBlockContainers = $('div[class*="fds-grid-layout"], div[class*="sds-grid-layout"]').toArray();
 
     for (const container of smartBlockContainers) {
       const $container = $(container);
       
-      const headingText = $container.find('h2, h3, [class*="heading"]').text().toLowerCase();
-      if (!headingText.includes('블로그') && !headingText.includes('주제') && !headingText.includes('인기')) {
+      const headingText = $container.find('h2, h3, [class*="heading"], [class*="text-type-headline"]').text().toLowerCase();
+      const smartBlockKeywords = ['블로그', '주제', '인기', '콘텐츠', '인플루언서', '브랜드', '관련'];
+      const hasSmartBlockKeyword = smartBlockKeywords.some(keyword => headingText.includes(keyword));
+      
+      if (!hasSmartBlockKeyword) {
         continue;
       }
 
