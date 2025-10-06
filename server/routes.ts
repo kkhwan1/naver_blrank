@@ -31,6 +31,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           change = previousRank - currentRank;
         }
         
+        let smartblockCategories = null;
+        if (measurement?.smartblockDetails) {
+          try {
+            smartblockCategories = JSON.parse(measurement.smartblockDetails);
+          } catch (e) {
+            console.error('Failed to parse smartblockDetails:', e);
+          }
+        }
+        
         return {
           id: keyword.id.toString(),
           keyword: keyword.keyword,
@@ -38,6 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rank: currentRank,
           change,
           smartblockStatus: measurement?.smartblockStatus ?? 'pending',
+          smartblockCategories,
           lastMeasured: measurement?.measuredAt 
             ? new Date(measurement.measuredAt).toISOString() 
             : null,

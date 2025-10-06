@@ -9,6 +9,18 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 
+interface SmartblockCategory {
+  categoryName: string;
+  rank: number | null;
+  totalBlogs: number;
+  status: string;
+  confidence: string;
+  topBlogs: Array<{
+    url: string;
+    title: string;
+  }>;
+}
+
 interface KeywordResponse {
   id: string;
   keyword: string;
@@ -16,6 +28,7 @@ interface KeywordResponse {
   rank: number | null;
   change: number;
   smartblockStatus: string;
+  smartblockCategories: SmartblockCategory[] | null;
   lastMeasured: string | null;
   createdAt: string;
   isActive: boolean;
@@ -135,6 +148,7 @@ export default function Dashboard() {
     lastMeasured: formatLastMeasured(k.lastMeasured),
     targetUrl: k.targetUrl,
     status: mapStatusToKeywordStatus(k.smartblockStatus, k.rank),
+    smartblockCategories: k.smartblockCategories,
   }));
 
   const stats = {

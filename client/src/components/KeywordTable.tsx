@@ -9,10 +9,27 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import StatusDot from './StatusDot';
 import RankBadge from './RankBadge';
 import ChangeIndicator from './ChangeIndicator';
-import { MoreVertical, ExternalLink } from 'lucide-react';
+import { MoreVertical, ExternalLink, Info } from 'lucide-react';
+
+interface SmartblockCategory {
+  categoryName: string;
+  rank: number | null;
+  totalBlogs: number;
+  status: string;
+  confidence: string;
+  topBlogs: Array<{
+    url: string;
+    title: string;
+  }>;
+}
 
 export interface KeywordData {
   id: string;
@@ -22,6 +39,7 @@ export interface KeywordData {
   lastMeasured: string;
   targetUrl: string;
   status: 'rank1' | 'rank2-3' | 'out' | 'error';
+  smartblockCategories?: SmartblockCategory[] | null;
 }
 
 interface KeywordTableProps {
@@ -117,7 +135,42 @@ export default function KeywordTable({ keywords, onRowClick, filterBy = 'all' }:
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <RankBadge rank={keyword.rank} />
+                  <div className="flex items-center justify-end gap-2">
+                    <RankBadge rank={keyword.rank} />
+                    {keyword.smartblockCategories && keyword.smartblockCategories.length > 0 && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" data-testid={`smartblock-details-${keyword.id}`}>
+                            <Info className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-96" align="end">
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm">스마트블록 상세 정보</h4>
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                              {keyword.smartblockCategories.map((category, idx) => (
+                                <div key={idx} className="p-2 border rounded-md space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium text-sm">{category.categoryName}</span>
+                                    {category.rank ? (
+                                      <Badge variant={category.rank === 1 ? 'default' : 'secondary'} className="text-xs">
+                                        {category.rank}위
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs">순위 없음</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    전체 {category.totalBlogs}개 블로그
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <ChangeIndicator change={keyword.change} />
