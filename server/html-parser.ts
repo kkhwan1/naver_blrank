@@ -109,28 +109,45 @@ export class NaverHTMLParser {
       
       let $container = $title.closest('div');
       let depth = 0;
-      while ($container.length > 0 && $container.find('a[href*="blog.naver.com"]').length === 0 && depth < 15) {
+      while ($container.length > 0 && depth < 15) {
+        const blogLinks = $container.find('a[href*="blog.naver.com"]').length;
+        const influencerLinks = $container.find('a[href*="in.naver.com"][data-cb-target*="nblog_post"]').length;
+        
+        if (blogLinks > 0 || influencerLinks > 0) {
+          break;
+        }
+        
         $container = $container.parent();
         depth++;
       }
       
-      const hasBlogLinks = $container.length > 0 && $container.find('a[href*="blog.naver.com"]').length > 0;
-      if (hasBlogLinks) {
-        console.log(`  ✓ 스마트블록 발견: "${text}" (블로그 링크 ${$container.find('a[href*="blog.naver.com"]').length}개)`);
+      const blogLinks = $container.find('a[href*="blog.naver.com"]').length;
+      const influencerLinks = $container.find('a[href*="in.naver.com"][data-cb-target*="nblog_post"]').length;
+      const hasRelevantLinks = blogLinks > 0 || influencerLinks > 0;
+      
+      if (hasRelevantLinks) {
+        console.log(`  ✓ 스마트블록 발견: "${text}" (블로그: ${blogLinks}개, 인플루언서: ${influencerLinks}개)`);
       }
       
-      return hasBlogLinks;
+      return hasRelevantLinks;
     });
     
     console.log(`스마트블록 제목 개수: ${smartBlockTitles.length}`);
-
+    
     for (const titleElement of smartBlockTitles) {
       const $title = $(titleElement);
       const categoryName = $title.text().trim();
       
       let $container = $title.closest('div');
       let depth = 0;
-      while ($container.length > 0 && $container.find('a[href*="blog.naver.com"]').length === 0 && depth < 15) {
+      while ($container.length > 0 && depth < 15) {
+        const blogLinks = $container.find('a[href*="blog.naver.com"]').length;
+        const influencerLinks = $container.find('a[href*="in.naver.com"][data-cb-target*="nblog_post"]').length;
+        
+        if (blogLinks > 0 || influencerLinks > 0) {
+          break;
+        }
+        
         $container = $container.parent();
         depth++;
       }
@@ -139,33 +156,41 @@ export class NaverHTMLParser {
         continue;
       }
 
-      const links = $container.find('a[href*="blog.naver.com"]').toArray();
+      const blogLinks = $container.find('a[href*="blog.naver.com"]').toArray();
+      const influencerLinks = $container.find('a[href*="in.naver.com"][data-cb-target*="nblog_post"]').toArray();
+      const allLinks = [...blogLinks, ...influencerLinks];
+      
       const categoryBlogs: BlogResult[] = [];
       const categorySeenUrls = new Set<string>();
       
-      for (const link of links) {
-        const href = $(link).attr('href') || '';
+      for (const link of allLinks) {
+        const $link = $(link);
+        const href = $link.attr('href') || '';
+        let blogUrl: string | null = null;
         
         if (href.includes('blog.naver.com')) {
-          const blogUrl = this.extractBlogUrl(href);
-          if (blogUrl && !categorySeenUrls.has(blogUrl)) {
-            categorySeenUrls.add(blogUrl);
-            const title = $(link).text().trim() || $(link).attr('aria-label') || $(link).attr('title') || '';
-            
-            categoryBlogs.push({
+          blogUrl = this.extractBlogUrl(href);
+        } else if (href.includes('in.naver.com')) {
+          blogUrl = this.extractInfluencerBlogUrl($link);
+        }
+        
+        if (blogUrl && !categorySeenUrls.has(blogUrl)) {
+          categorySeenUrls.add(blogUrl);
+          const title = $link.text().trim() || $link.attr('aria-label') || $link.attr('title') || '';
+          
+          categoryBlogs.push({
+            url: blogUrl,
+            title: title || '제목 없음',
+            position: categoryBlogs.length,
+          });
+          
+          if (!seenUrls.has(blogUrl)) {
+            seenUrls.add(blogUrl);
+            blogResults.push({
               url: blogUrl,
               title: title || '제목 없음',
-              position: categoryBlogs.length,
+              position: blogResults.length,
             });
-            
-            if (!seenUrls.has(blogUrl)) {
-              seenUrls.add(blogUrl);
-              blogResults.push({
-                url: blogUrl,
-                title: title || '제목 없음',
-                position: blogResults.length,
-              });
-            }
           }
         }
       }
@@ -221,17 +246,42 @@ export class NaverHTMLParser {
 
   private extractBlogUrl(url: string): string | null {
     try {
-      const blogMatch = url.match(/blog\.naver\.com\/([^/]+)\/(\d+)/);
-      if (blogMatch) {
+      const blogMatch = url.match(/blog\.naver\.com\/([^/?]+)\/(\d+)/);
+      if (blogMatch && blogMatch[2]) {
         return `https://blog.naver.com/${blogMatch[1]}/${blogMatch[2]}`;
       }
 
       const paramMatch = url.match(/blogId=([^&]+).*?logNo=(\d+)/);
-      if (paramMatch) {
+      if (paramMatch && paramMatch[2]) {
         return `https://blog.naver.com/${paramMatch[1]}/${paramMatch[2]}`;
       }
 
       return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private extractInfluencerBlogUrl($link: cheerio.Cheerio<any>): string | null {
+    try {
+      const dataTarget = $link.attr('data-cb-target') || '';
+      const href = $link.attr('href') || '';
+      
+      const postMatch = dataTarget.match(/nblog_post_(\d+)/);
+      if (!postMatch || !postMatch[1]) {
+        return null;
+      }
+      
+      const postNo = postMatch[1];
+      
+      const userMatch = href.match(/in\.naver\.com\/([^/?]+)/);
+      if (!userMatch || !userMatch[1]) {
+        return null;
+      }
+      
+      const userId = userMatch[1];
+      
+      return `https://blog.naver.com/${userId}/${postNo}`;
     } catch (error) {
       return null;
     }

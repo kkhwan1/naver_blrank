@@ -10,8 +10,9 @@ export interface RankMatchResult {
 export class SmartBlockParser {
   findRank(targetUrl: string, blogResults: BlogResult[]): RankMatchResult {
     const normalizedTarget = this.normalizeUrl(targetUrl);
+    const targetPostNo = this.extractPostNumber(targetUrl);
 
-    for (let i = 0; i < Math.min(blogResults.length, 3); i++) {
+    for (let i = 0; i < Math.min(blogResults.length, 10); i++) {
       const result = blogResults[i];
       const normalizedResult = this.normalizeUrl(result.url);
 
@@ -22,6 +23,18 @@ export class SmartBlockParser {
           matchedUrl: result.url,
           exactMatch: true,
         };
+      }
+
+      if (targetPostNo) {
+        const resultPostNo = this.extractPostNumber(result.url);
+        if (resultPostNo && targetPostNo === resultPostNo) {
+          return {
+            rank: i + 1,
+            confidence: 0.95,
+            matchedUrl: result.url,
+            exactMatch: false,
+          };
+        }
       }
 
       const similarity = this.calculateSimilarity(normalizedTarget, normalizedResult);
@@ -41,6 +54,11 @@ export class SmartBlockParser {
       matchedUrl: '',
       exactMatch: false,
     };
+  }
+
+  private extractPostNumber(url: string): string | null {
+    const match = url.match(/\/(\d{8,})/);
+    return match ? match[1] : null;
   }
 
   normalizeUrl(url: string): string {
