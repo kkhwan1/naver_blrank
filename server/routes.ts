@@ -15,14 +15,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const keywords = await storage.getKeywords();
       const latestMeasurements = await storage.getLatestMeasurements();
+      const previousMeasurements = await storage.getPreviousMeasurements();
 
       const keywordsWithRank = keywords.map(keyword => {
         const measurement = latestMeasurements.get(keyword.id);
+        const previousMeasurement = previousMeasurements.get(keyword.id);
+        
+        const currentRank = measurement?.rankSmartblock ?? null;
+        const previousRank = previousMeasurement?.rankSmartblock ?? null;
+        
+        let change = 0;
+        if (currentRank !== null && previousRank !== null) {
+          change = previousRank - currentRank;
+        }
+        
         return {
           id: keyword.id.toString(),
           keyword: keyword.keyword,
           targetUrl: keyword.targetUrl,
-          rank: measurement?.rankSmartblock ?? null,
+          rank: currentRank,
+          change,
           smartblockStatus: measurement?.smartblockStatus ?? 'pending',
           lastMeasured: measurement?.measuredAt 
             ? new Date(measurement.measuredAt).toISOString() 
@@ -88,9 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const searchResult = await naverClient.searchNaver(keyword.keyword);
         
-        const detection = smartBlockParser.detectSmartBlock(searchResult.html);
-        
-        if (detection.status === 'not_found') {
+        if (searchResult.blogResults.length === 0) {
           const measurement = await storage.createMeasurement({
             keywordId: keyword.id,
             measuredAt: new Date(),
@@ -105,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const rankResult = smartBlockParser.findRank(
           keyword.targetUrl,
-          detection.blogCards
+          searchResult.blogResults
         );
 
         const measurement = await storage.createMeasurement({

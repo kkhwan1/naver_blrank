@@ -15,6 +15,7 @@ export interface IStorage {
   getMeasurements(keywordId: number, limit?: number): Promise<Measurement[]>;
   createMeasurement(measurement: InsertMeasurement): Promise<Measurement>;
   getLatestMeasurements(): Promise<Map<number, Measurement>>;
+  getPreviousMeasurements(): Promise<Map<number, Measurement>>;
 }
 
 export class MemStorage implements IStorage {
@@ -135,6 +136,23 @@ export class MemStorage implements IStorage {
       });
     
     return latest;
+  }
+
+  async getPreviousMeasurements(): Promise<Map<number, Measurement>> {
+    const previous = new Map<number, Measurement>();
+    const latest = new Map<number, Measurement>();
+    
+    Array.from(this.measurements.values())
+      .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
+      .forEach(measurement => {
+        if (!latest.has(measurement.keywordId)) {
+          latest.set(measurement.keywordId, measurement);
+        } else if (!previous.has(measurement.keywordId)) {
+          previous.set(measurement.keywordId, measurement);
+        }
+      });
+    
+    return previous;
   }
 }
 

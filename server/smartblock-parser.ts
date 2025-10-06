@@ -1,16 +1,4 @@
-import * as cheerio from 'cheerio';
-
-export interface BlogCard {
-  url: string;
-  title: string;
-  position: number;
-}
-
-export interface DetectionResult {
-  status: 'found' | 'not_found' | 'error';
-  confidence: number;
-  blogCards: BlogCard[];
-}
+import type { BlogResult } from './naver-client';
 
 export interface RankMatchResult {
   rank: number | null;
@@ -20,82 +8,28 @@ export interface RankMatchResult {
 }
 
 export class SmartBlockParser {
-  detectSmartBlock(html: string): DetectionResult {
-    try {
-      const $ = cheerio.load(html);
-      const blogCards: BlogCard[] = [];
-
-      const possibleSelectors = [
-        'a[href*="blog.naver.com"]',
-        'a[href*="tistory.com"]',
-        'a[href*="/blog/"]',
-      ];
-
-      let position = 0;
-      for (const selector of possibleSelectors) {
-        $(selector).each((i, element) => {
-          const $elem = $(element);
-          const url = $elem.attr('href');
-          const title = $elem.text().trim();
-
-          if (url && title && position < 10) {
-            const normalizedUrl = this.normalizeUrl(url);
-            if (normalizedUrl && !blogCards.find(c => c.url === normalizedUrl)) {
-              blogCards.push({
-                url: normalizedUrl,
-                title,
-                position: position++,
-              });
-            }
-          }
-        });
-      }
-
-      if (blogCards.length === 0) {
-        return {
-          status: 'not_found',
-          confidence: 0,
-          blogCards: [],
-        };
-      }
-
-      return {
-        status: 'found',
-        confidence: blogCards.length >= 3 ? 0.9 : 0.6,
-        blogCards: blogCards.slice(0, 10),
-      };
-    } catch (error) {
-      console.error('SmartBlock parsing error:', error);
-      return {
-        status: 'error',
-        confidence: 0,
-        blogCards: [],
-      };
-    }
-  }
-
-  findRank(targetUrl: string, blogCards: BlogCard[]): RankMatchResult {
+  findRank(targetUrl: string, blogResults: BlogResult[]): RankMatchResult {
     const normalizedTarget = this.normalizeUrl(targetUrl);
 
-    for (let i = 0; i < Math.min(blogCards.length, 3); i++) {
-      const card = blogCards[i];
-      const normalizedCard = this.normalizeUrl(card.url);
+    for (let i = 0; i < Math.min(blogResults.length, 3); i++) {
+      const result = blogResults[i];
+      const normalizedResult = this.normalizeUrl(result.url);
 
-      if (normalizedCard === normalizedTarget) {
+      if (normalizedResult === normalizedTarget) {
         return {
           rank: i + 1,
           confidence: 1.0,
-          matchedUrl: card.url,
+          matchedUrl: result.url,
           exactMatch: true,
         };
       }
 
-      const similarity = this.calculateSimilarity(normalizedTarget, normalizedCard);
+      const similarity = this.calculateSimilarity(normalizedTarget, normalizedResult);
       if (similarity > 0.85) {
         return {
           rank: i + 1,
           confidence: similarity,
-          matchedUrl: card.url,
+          matchedUrl: result.url,
           exactMatch: false,
         };
       }

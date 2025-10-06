@@ -1,7 +1,13 @@
 import axios from 'axios';
 
+export interface BlogResult {
+  url: string;
+  title: string;
+  position: number;
+}
+
 export interface SearchResult {
-  html: string;
+  blogResults: BlogResult[];
   searchId: string;
   timestamp: Date;
   metadata: {
@@ -38,8 +44,62 @@ export class NaverAPIClient {
         throw new Error('No data received from SerpAPI');
       }
 
+      const blogResults: BlogResult[] = [];
+      
+      if (response.data.inline_blog_card_results) {
+        response.data.inline_blog_card_results.forEach((result: any, index: number) => {
+          if (result.link) {
+            blogResults.push({
+              url: result.link,
+              title: result.title || '',
+              position: index,
+            });
+          }
+        });
+      }
+      
+      if (blogResults.length === 0 && response.data.blog_card_results) {
+        response.data.blog_card_results.forEach((result: any, index: number) => {
+          if (result.link) {
+            blogResults.push({
+              url: result.link,
+              title: result.title || '',
+              position: index,
+            });
+          }
+        });
+      }
+      
+      if (blogResults.length === 0 && response.data.organic_results) {
+        response.data.organic_results.forEach((result: any, index: number) => {
+          if (result.link && (
+            result.link.includes('blog.naver.com') ||
+            result.link.includes('tistory.com') ||
+            result.link.includes('/blog/')
+          )) {
+            blogResults.push({
+              url: result.link,
+              title: result.title || '',
+              position: index,
+            });
+          }
+        });
+      }
+
+      if (blogResults.length === 0 && response.data.blog_results) {
+        response.data.blog_results.forEach((result: any, index: number) => {
+          if (result.link && !blogResults.find(b => b.url === result.link)) {
+            blogResults.push({
+              url: result.link,
+              title: result.title || '',
+              position: blogResults.length + index,
+            });
+          }
+        });
+      }
+
       return {
-        html: JSON.stringify(response.data),
+        blogResults: blogResults.slice(0, 10),
         searchId: response.data.search_metadata?.id || 'unknown',
         timestamp: new Date(),
         metadata: {
