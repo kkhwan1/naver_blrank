@@ -36,7 +36,12 @@ Preferred communication style: Simple, everyday language.
   - SerpAPI: Returns BLOCK_MISSING for Naver Smart Block queries
 - Enhanced HTML parser to detect multiple Smart Block types:
   - "리빙 인플루언서 콘텐츠", "천안 아산가구단지", "천안삼거리 가구단지", "'천안가구단지' 관련 브랜드 콘텐츠"
-  - Uses `fds-comps-footer-more-subject` CSS class for reliable Smart Block detection
+  - Uses `fds-comps-footer-more-subject` and `fds-comps-header-headline` CSS selectors for reliable Smart Block detection
+- Implemented dynamic smart block detection that works across all keywords
+  - Removed restrictive filtering, now detects all smart block categories regardless of keyword
+  - Validates smart blocks by checking for blog.naver.com links in parent containers
+  - Filters out non-blog content (숏텐츠, 네이버 클립, NAVER NOW) to show only blog-related smart blocks
+  - Tested with "밀키트" (9 categories) and "천안가구단지" (6 categories) - all blog categories detected accurately
 
 ## System Architecture
 
