@@ -71,20 +71,23 @@ export class NaverHTMLParser {
     const blogResults: BlogResult[] = [];
     const seenUrls = new Set<string>();
 
-    const smartBlockContainers = $('div[class*="fds-grid-layout"], div[class*="sds-grid-layout"]').toArray();
+    const smartBlockTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
 
-    for (const container of smartBlockContainers) {
-      const $container = $(container);
+    for (const titleElement of smartBlockTitles) {
+      const $title = $(titleElement);
       
-      const headingText = $container.find('h2, h3, [class*="heading"], [class*="text-type-headline"]').text().toLowerCase();
-      const smartBlockKeywords = ['블로그', '주제', '인기', '콘텐츠', '인플루언서', '브랜드', '관련'];
-      const hasSmartBlockKeyword = smartBlockKeywords.some(keyword => headingText.includes(keyword));
+      let $container = $title.closest('div');
+      let depth = 0;
+      while ($container.length > 0 && $container.find('a[href*="blog.naver.com"]').length === 0 && depth < 10) {
+        $container = $container.parent();
+        depth++;
+      }
       
-      if (!hasSmartBlockKeyword) {
+      if ($container.length === 0) {
         continue;
       }
 
-      const links = $container.find('a[href]').toArray();
+      const links = $container.find('a[href*="blog.naver.com"]').toArray();
       
       for (const link of links) {
         const href = $(link).attr('href') || '';

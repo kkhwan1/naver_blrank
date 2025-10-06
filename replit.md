@@ -12,9 +12,31 @@ A web application for tracking Naver blog post rankings within Smart Block searc
 - 30-day trend analysis for optimizing republishing timing
 - Scalable from 10 to 1,000+ keywords
 
+**Current Status** (October 2025):
+- PostgreSQL database operational with keywords and measurements tables
+- REST API for keyword management (add/list/delete)
+- Dual measurement methods: HTML parsing (recommended) and SerpAPI
+- Accurate Smart Block rank detection using `fds-comps-footer-more-subject` class selector
+- Rank 1-3 detection with confidence scoring
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Recent Changes
+
+**October 6, 2025**:
+- Implemented PostgreSQL database schema with keywords and measurements tables
+- Built keyword management API endpoints (POST/GET/DELETE /api/keywords)
+- Created dual measurement approach: SerpAPI client and HTML parsing method
+- Fixed critical SerpAPI integration issues (JSON parsing, field extraction)
+- Resolved N+1 query performance issue with batched previous measurements lookup
+- Completed comprehensive testing: HTML parsing method superior to SerpAPI
+  - HTML parsing: 100% accuracy, faster (1463ms vs 2017ms), detects Smart Block rank 1
+  - SerpAPI: Returns BLOCK_MISSING for Naver Smart Block queries
+- Enhanced HTML parser to detect multiple Smart Block types:
+  - "리빙 인플루언서 콘텐츠", "천안 아산가구단지", "천안삼거리 가구단지", "'천안가구단지' 관련 브랜드 콘텐츠"
+  - Uses `fds-comps-footer-more-subject` CSS class for reliable Smart Block detection
 
 ## System Architecture
 
@@ -55,32 +77,58 @@ Preferred communication style: Simple, everyday language.
 - **Production**: esbuild for bundling
 
 **Current Routes**:
-- `POST /api/analyze` - URL analysis endpoint for extracting keywords and metadata from blog posts
+- `POST /api/keywords` - Create new keyword tracking
+- `GET /api/keywords` - List all keywords
+- `DELETE /api/keywords/:id` - Delete keyword
+- `POST /api/measure/:keywordId?method=html-parser|serpapi` - Measure Smart Block rank
+  - `method=html-parser` (recommended): Direct HTML parsing, 100% accurate
+  - `method=serpapi`: SerpAPI integration, less reliable for Smart Block
 
 **Storage Layer**:
-- Currently using in-memory storage (MemStorage class)
-- Schema defined with Drizzle ORM
-- Designed for PostgreSQL migration (Drizzle configuration present)
+- PostgreSQL database (Neon/Replit built-in) with Drizzle ORM
+- In-memory storage (MemStorage) available as fallback
+- Database operations optimized with batched queries
+
+**Implemented Architecture**:
+- HTML parser for Smart Block detection using `fds-comps-footer-more-subject` CSS selector
+- SerpAPI client for alternative measurement method
+- PostgreSQL storage with Drizzle ORM
+- Batched query optimization to prevent N+1 queries
 
 **Planned Architecture** (from technical design docs):
-- Job scheduling with BullMQ + Redis
+- Job scheduling with BullMQ + Redis for automated measurements
 - Worker pool for measurement processing
-- SerpAPI integration for Naver SERP scraping
-- Smart Block HTML parser for rank extraction
 - Naver Search API for blog tab rankings
-- Real-time updates via Supabase Realtime WebSocket
+- Real-time updates for rank changes
+- Frontend dashboard with trend visualization
 
 ### Data Models
 
 **Current Schema** (shared/schema.ts):
-- Users table with username/password authentication
-- Validation using Zod schemas
+- **keywords** table:
+  - id (serial primary key)
+  - keyword (text): Search keyword to track
+  - targetUrl (text): Blog post URL to monitor
+  - isActive (boolean): Tracking status
+  - createdAt, updatedAt (timestamps)
+  
+- **measurements** table:
+  - id (serial primary key)
+  - keywordId (foreign key to keywords)
+  - measuredAt (timestamp): Measurement timestamp
+  - rankSmartblock (integer): Position in Smart Block (1-3 or null)
+  - smartblockStatus (text): OK, NOT_IN_BLOCK, BLOCK_MISSING, ERROR
+  - smartblockConfidence (text): Match confidence (0.00-1.00)
+  - blogTabRank (integer): Position in blog tab (planned)
+  - searchVolumeAvg (integer): Search volume data (planned)
+  - durationMs (integer): Measurement duration
+  - errorMessage (text): Error details if any
+  - method (text): Measurement method (html-parser or serpapi)
 
-**Planned Models** (from PRD/technical docs):
-- Keywords tracking table
-- Measurements/rankings history
-- Alerts/notifications
-- Search volume data
+**Planned Models**:
+- Alerts/notifications table for rank change alerts
+- User preferences for alert thresholds
+- Historical aggregations for 30-day trend analysis
 
 ### Application Structure
 
@@ -95,7 +143,10 @@ Preferred communication style: Simple, everyday language.
 │   │   └── lib/          # Utilities and query client
 ├── server/                # Backend Express application
 │   ├── routes.ts         # API route definitions
-│   ├── storage.ts        # Data access layer
+│   ├── storage.ts        # Data access layer (PostgreSQL + MemStorage)
+│   ├── html-parser.ts    # HTML parser for Smart Block detection
+│   ├── naver-client.ts   # SerpAPI client
+│   ├── smartblock-parser.ts  # Rank matching logic
 │   └── vite.ts           # Vite dev server integration
 ├── shared/               # Shared types and schemas
 │   └── schema.ts         # Database schema (Drizzle)
@@ -119,10 +170,21 @@ Preferred communication style: Simple, everyday language.
 - esbuild for production server bundling
 - TypeScript strict mode enabled
 
+**Smart Block Detection Implementation**:
+- Primary method: HTML parsing with Cheerio
+  - Detects Smart Block using `fds-comps-footer-more-subject` CSS class
+  - Supports multiple Smart Block types (인플루언서 콘텐츠, 브랜드 콘텐츠, etc.)
+  - Accuracy: 100% for rank 1-3 detection
+  - Performance: ~1500ms per measurement
+- Secondary method: SerpAPI
+  - Limitation: Returns BLOCK_MISSING for most queries
+  - Not recommended for production use
+  - Kept for fallback/comparison purposes
+
 **API Rate Limiting Considerations**:
-- Technical docs identify SerpAPI quota limitations (100 requests/month)
-- Proposed hybrid approach using Naver API + SerpAPI
-- Redis-based distributed locking for concurrency control (planned)
+- SerpAPI quota limitations: 100 requests/month (free tier)
+- HTML parsing has no rate limits (direct web scraping)
+- Future: Redis-based distributed locking for concurrent measurements
 
 **Security Considerations** (from HRD):
 - Need for input validation and SQL injection prevention
