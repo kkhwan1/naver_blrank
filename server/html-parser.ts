@@ -134,9 +134,16 @@ export class NaverHTMLParser {
     
     console.log(`스마트블록 제목 개수: ${smartBlockTitles.length}`);
     
+    const seenCategories = new Set<string>();
+    
     for (const titleElement of smartBlockTitles) {
       const $title = $(titleElement);
       const categoryName = $title.text().trim();
+      
+      if (seenCategories.has(categoryName)) {
+        console.log(`  - 중복 스마트블록 스킵: "${categoryName}"`);
+        continue;
+      }
       
       let $container = $title.closest('div');
       let depth = 0;
@@ -196,6 +203,7 @@ export class NaverHTMLParser {
       }
       
       if (categoryBlogs.length > 0) {
+        seenCategories.add(categoryName);
         categories.push({
           categoryName,
           blogs: categoryBlogs,
