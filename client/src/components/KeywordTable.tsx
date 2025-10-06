@@ -14,10 +14,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import StatusDot from './StatusDot';
 import RankBadge from './RankBadge';
 import ChangeIndicator from './ChangeIndicator';
-import { MoreVertical, ExternalLink, Info } from 'lucide-react';
+import { MoreVertical, ExternalLink, Info, LineChart, Trash2 } from 'lucide-react';
 
 interface SmartblockCategory {
   categoryName: string;
@@ -45,10 +51,12 @@ export interface KeywordData {
 interface KeywordTableProps {
   keywords: KeywordData[];
   onRowClick?: (id: string) => void;
+  onViewDetails?: (id: string) => void;
+  onDelete?: (id: string) => void;
   filterBy?: 'all' | 'up' | 'down' | 'stable';
 }
 
-export default function KeywordTable({ keywords, onRowClick, filterBy = 'all' }: KeywordTableProps) {
+export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDelete, filterBy = 'all' }: KeywordTableProps) {
   const [selectedFilter, setSelectedFilter] = useState(filterBy);
 
   const filteredKeywords = keywords.filter((keyword) => {
@@ -179,17 +187,51 @@ export default function KeywordTable({ keywords, onRowClick, filterBy = 'all' }:
                   <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log('More actions for', keyword.id);
-                    }}
-                    data-testid={`keyword-actions-${keyword.id}`}
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid={`keyword-actions-${keyword.id}`}
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRowClick?.(keyword.id);
+                        }}
+                        data-testid={`action-measure-${keyword.id}`}
+                      >
+                        <LineChart className="w-4 h-4 mr-2" />
+                        순위 측정
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewDetails?.(keyword.id);
+                        }}
+                        data-testid={`action-view-details-${keyword.id}`}
+                      >
+                        <Info className="w-4 h-4 mr-2" />
+                        상세 보기
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete?.(keyword.id);
+                        }}
+                        className="text-destructive"
+                        data-testid={`action-delete-${keyword.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        삭제
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}

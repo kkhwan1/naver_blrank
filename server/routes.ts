@@ -101,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/measure/:id', async (req, res) => {
     try {
       const keywordId = parseInt(req.params.id);
-      const method = (req.query.method as string) || 'serpapi';
+      const method = (req.query.method as string) || 'html-parser';
       const keyword = await storage.getKeyword(keywordId);
 
       if (!keyword) {
@@ -126,13 +126,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchMethod = 'serpapi';
         }
         
-        if (blogResults.length === 0) {
+        if (blogResults.length === 0 && categories.length === 0) {
           const measurement = await storage.createMeasurement({
             keywordId: keyword.id,
             measuredAt: new Date(),
             rankSmartblock: null,
             smartblockStatus: 'BLOCK_MISSING',
             smartblockConfidence: '0',
+            smartblockDetails: JSON.stringify([{
+              categoryName: '스마트블록 없음',
+              rank: null,
+              totalBlogs: 0,
+              status: 'BLOCK_MISSING',
+              confidence: '0',
+              topBlogs: [],
+              message: '해당 키워드로 스마트블록을 찾을 수 없습니다.'
+            }]),
             durationMs: Date.now() - startTime,
             method: searchMethod,
           });
@@ -145,23 +154,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           blogResults
         );
 
-        const detailedCategories = categories.map(category => {
-          const categoryRankResult = smartBlockParser.findRank(
-            keyword.targetUrl,
-            category.blogs
-          );
-          return {
-            categoryName: category.categoryName,
-            rank: categoryRankResult.rank,
-            totalBlogs: category.totalBlogs,
-            status: categoryRankResult.rank ? 'FOUND' : 'NOT_FOUND',
-            confidence: categoryRankResult.confidence.toFixed(2),
-            topBlogs: category.blogs.slice(0, 3).map((b: any) => ({
-              url: b.url,
-              title: b.title,
-            })),
-          };
-        });
+        const detailedCategories = categories.length > 0 
+          ? categories.map(category => {
+              const categoryRankResult = smartBlockParser.findRank(
+                keyword.targetUrl,
+                category.blogs
+              );
+              return {
+                categoryName: category.categoryName,
+                rank: categoryRankResult.rank,
+                totalBlogs: category.totalBlogs,
+                status: categoryRankResult.rank ? 'FOUND' : 'NOT_FOUND',
+                confidence: categoryRankResult.confidence.toFixed(2),
+                topBlogs: category.blogs.slice(0, 3).map((b: any) => ({
+                  url: b.url,
+                  title: b.title,
+                })),
+                message: categoryRankResult.rank 
+                  ? `${category.categoryName}에서 ${categoryRankResult.rank}위 발견`
+                  : `${category.categoryName}에서 내 블로그를 찾을 수 없음 (상위 ${category.totalBlogs}개 중)`
+              };
+            })
+          : [{
+              categoryName: '전체 검색 결과',
+              rank: rankResult.rank,
+              totalBlogs: blogResults.length,
+              status: rankResult.rank ? 'FOUND' : 'NOT_FOUND',
+              confidence: rankResult.confidence.toFixed(2),
+              topBlogs: blogResults.slice(0, 3).map((b: any) => ({
+                url: b.url,
+                title: b.title,
+              })),
+              message: rankResult.rank 
+                ? `전체 검색 결과에서 ${rankResult.rank}위 발견`
+                : `전체 검색 결과 ${blogResults.length}개 중 내 블로그를 찾을 수 없음`
+            }];
 
         const measurement = await storage.createMeasurement({
           keywordId: keyword.id,

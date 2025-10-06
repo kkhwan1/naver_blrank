@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import StatCard from '@/components/StatCard';
 import KeywordTable, { KeywordData } from '@/components/KeywordTable';
 import AddKeywordDialog from '@/components/AddKeywordDialog';
+import MeasurementDetailDialog from '@/components/MeasurementDetailDialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -63,6 +64,9 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [measuringId, setMeasuringId] = useState<string | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
+  const [selectedKeywordName, setSelectedKeywordName] = useState<string>('');
 
   const { data: keywords = [], isLoading } = useQuery<KeywordResponse[]>({
     queryKey: ['/api/keywords'],
@@ -91,15 +95,18 @@ export default function Dashboard() {
   const measureMutation = useMutation({
     mutationFn: async ({ id, method }: { id: string; method: string }) => {
       setMeasuringId(id);
-      return apiRequest('POST', `/api/measure/${id}?method=${method}`);
+      const res = await apiRequest('POST', `/api/measure/${id}?method=${method}`);
+      return res.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: any, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/keywords'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/measurements', variables.id] });
       toast({
         title: '측정 완료',
         description: `순위 측정 완료 (방식: ${data.method === 'serpapi' ? 'SerpAPI' : 'HTML 파싱'})`,
       });
-      console.log('측정 결과:', data);
+      
+      setDetailDialogOpen(true);
       setMeasuringId(null);
     },
     onError: (error: Error) => {
@@ -136,8 +143,29 @@ export default function Dashboard() {
     addKeywordMutation.mutate(data);
   };
 
-  const handleMeasureKeyword = (id: string, method: string = 'serpapi') => {
+  const handleMeasureKeyword = (id: string, method: string = 'html-parser') => {
+    const keyword = keywords.find(k => k.id === id);
+    if (keyword) {
+      setSelectedKeywordId(id);
+      setSelectedKeywordName(keyword.keyword);
+    }
     measureMutation.mutate({ id, method });
+  };
+
+  const handleViewDetails = (id: string) => {
+    const keyword = keywords.find(k => k.id === id);
+    if (keyword) {
+      setSelectedKeywordId(id);
+      setSelectedKeywordName(keyword.keyword);
+      setDetailDialogOpen(true);
+    }
+  };
+
+  const handleDeleteKeyword = (id: string) => {
+    const keyword = keywords.find(k => k.id === id);
+    if (keyword && confirm(`"${keyword.keyword}" 키워드를 삭제하시겠습니까?`)) {
+      deleteKeywordMutation.mutate(id);
+    }
   };
 
   const keywordsData: KeywordData[] = keywords.map((k) => ({
@@ -217,6 +245,8 @@ export default function Dashboard() {
                 if (measuringId === id) return;
                 handleMeasureKeyword(id);
               }}
+              onViewDetails={handleViewDetails}
+              onDelete={handleDeleteKeyword}
             />
           </div>
         </div>
@@ -226,6 +256,13 @@ export default function Dashboard() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSubmit={handleAddKeyword}
+      />
+
+      <MeasurementDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        keywordId={selectedKeywordId}
+        keyword={selectedKeywordName}
       />
     </div>
   );

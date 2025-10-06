@@ -79,11 +79,16 @@ export class NaverHTMLParser {
     const seenUrls = new Set<string>();
     const categories: SmartBlockCategory[] = [];
 
+    console.log('\n=== HTML 파싱 시작 ===');
+    console.log(`HTML 길이: ${html.length} 바이트`);
+    
     const smartBlockTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
+    console.log(`스마트블록 제목 요소 개수: ${smartBlockTitles.length}`);
 
     for (const titleElement of smartBlockTitles) {
       const $title = $(titleElement);
       const categoryName = $title.text().trim();
+      console.log(`\n카테고리 발견: "${categoryName}"`);
       
       let $container = $title.closest('div');
       let depth = 0;
@@ -93,10 +98,12 @@ export class NaverHTMLParser {
       }
       
       if ($container.length === 0) {
+        console.log(`  -> 컨테이너를 찾을 수 없음`);
         continue;
       }
 
       const links = $container.find('a[href*="blog.naver.com"]').toArray();
+      console.log(`  -> 블로그 링크 ${links.length}개 발견`);
       const categoryBlogs: BlogResult[] = [];
       const categorySeenUrls = new Set<string>();
       
@@ -137,7 +144,9 @@ export class NaverHTMLParser {
     }
 
     if (blogResults.length === 0) {
+      console.log('\n스마트블록 제목으로 블로그를 찾지 못함. 전체 페이지에서 검색...');
       const allLinks = $('a[href*="blog.naver.com"]').toArray();
+      console.log(`전체 블로그 링크 개수: ${allLinks.length}`);
       
       for (const link of allLinks.slice(0, 10)) {
         const href = $(link).attr('href') || '';
@@ -154,6 +163,16 @@ export class NaverHTMLParser {
           });
         }
       }
+    }
+
+    console.log(`\n=== 파싱 완료 ===`);
+    console.log(`총 ${blogResults.length}개 블로그 발견`);
+    console.log(`총 ${categories.length}개 카테고리 발견`);
+    if (blogResults.length > 0) {
+      console.log(`\n상위 3개 블로그:`);
+      blogResults.slice(0, 3).forEach((blog, i) => {
+        console.log(`  ${i+1}. ${blog.url}`);
+      });
     }
 
     return {
