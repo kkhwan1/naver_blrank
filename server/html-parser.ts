@@ -2,10 +2,16 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import type { BlogResult } from './naver-client';
 
+export interface SmartBlockCategory {
+  categoryName: string;
+  blogs: BlogResult[];
+  totalBlogs: number;
+}
+
 export interface SmartBlockDetectionResult {
   found: boolean;
   blogResults: BlogResult[];
-  categoryName?: string;
+  categories: SmartBlockCategory[];
   totalBlogs: number;
 }
 
@@ -61,6 +67,7 @@ export class NaverHTMLParser {
       return {
         found: false,
         blogResults: [],
+        categories: [],
         totalBlogs: 0,
       };
     }
@@ -70,11 +77,13 @@ export class NaverHTMLParser {
     const $ = cheerio.load(html);
     const blogResults: BlogResult[] = [];
     const seenUrls = new Set<string>();
+    const categories: SmartBlockCategory[] = [];
 
     const smartBlockTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
 
     for (const titleElement of smartBlockTitles) {
       const $title = $(titleElement);
+      const categoryName = $title.text().trim();
       
       let $container = $title.closest('div');
       let depth = 0;
@@ -88,23 +97,42 @@ export class NaverHTMLParser {
       }
 
       const links = $container.find('a[href*="blog.naver.com"]').toArray();
+      const categoryBlogs: BlogResult[] = [];
+      const categorySeenUrls = new Set<string>();
       
       for (const link of links) {
         const href = $(link).attr('href') || '';
         
         if (href.includes('blog.naver.com')) {
           const blogUrl = this.extractBlogUrl(href);
-          if (blogUrl && !seenUrls.has(blogUrl)) {
-            seenUrls.add(blogUrl);
+          if (blogUrl && !categorySeenUrls.has(blogUrl)) {
+            categorySeenUrls.add(blogUrl);
             const title = $(link).text().trim() || $(link).attr('aria-label') || $(link).attr('title') || '';
             
-            blogResults.push({
+            categoryBlogs.push({
               url: blogUrl,
               title: title || '제목 없음',
-              position: blogResults.length,
+              position: categoryBlogs.length,
             });
+            
+            if (!seenUrls.has(blogUrl)) {
+              seenUrls.add(blogUrl);
+              blogResults.push({
+                url: blogUrl,
+                title: title || '제목 없음',
+                position: blogResults.length,
+              });
+            }
           }
         }
+      }
+      
+      if (categoryBlogs.length > 0) {
+        categories.push({
+          categoryName,
+          blogs: categoryBlogs,
+          totalBlogs: categoryBlogs.length,
+        });
       }
     }
 
@@ -131,6 +159,7 @@ export class NaverHTMLParser {
     return {
       found: blogResults.length > 0,
       blogResults: blogResults.slice(0, 10),
+      categories,
       totalBlogs: blogResults.length,
     };
   }

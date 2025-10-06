@@ -103,10 +103,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         let blogResults = [];
         let searchMethod = method;
+        let categories: any[] = [];
 
         if (method === 'html-parser') {
           const htmlResult = await htmlParser.searchNaver(keyword.keyword);
           blogResults = htmlResult.blogResults;
+          categories = htmlResult.categories;
           searchMethod = 'html-parser';
         } else {
           const searchResult = await naverClient.searchNaver(keyword.keyword);
@@ -122,6 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             smartblockStatus: 'BLOCK_MISSING',
             smartblockConfidence: '0',
             durationMs: Date.now() - startTime,
+            method: searchMethod,
           });
 
           return res.json({ ...measurement, method: searchMethod });
@@ -132,18 +135,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           blogResults
         );
 
+        const detailedCategories = categories.map(category => {
+          const categoryRankResult = smartBlockParser.findRank(
+            keyword.targetUrl,
+            category.blogs
+          );
+          return {
+            categoryName: category.categoryName,
+            rank: categoryRankResult.rank,
+            totalBlogs: category.totalBlogs,
+            status: categoryRankResult.rank ? 'FOUND' : 'NOT_FOUND',
+            confidence: categoryRankResult.confidence.toFixed(2),
+            topBlogs: category.blogs.slice(0, 3).map((b: any) => ({
+              url: b.url,
+              title: b.title,
+            })),
+          };
+        });
+
         const measurement = await storage.createMeasurement({
           keywordId: keyword.id,
           measuredAt: new Date(),
           rankSmartblock: rankResult.rank,
           smartblockStatus: rankResult.rank ? 'OK' : 'NOT_IN_BLOCK',
           smartblockConfidence: rankResult.confidence.toFixed(2),
+          smartblockDetails: detailedCategories.length > 0 ? JSON.stringify(detailedCategories) : null,
           durationMs: Date.now() - startTime,
+          method: searchMethod,
         });
 
         res.json({ 
           ...measurement, 
           method: searchMethod,
+          smartblockCategories: detailedCategories,
           debug: {
             totalBlogsFound: blogResults.length,
             topBlogs: blogResults.slice(0, 3).map(b => ({
@@ -161,6 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           smartblockConfidence: '0',
           errorMessage: error instanceof Error ? error.message : '알 수 없는 오류',
           durationMs: Date.now() - startTime,
+          method: method,
         });
 
         res.json({ ...measurement, method: method, error: error instanceof Error ? error.message : '알 수 없는 오류' });

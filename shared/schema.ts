@@ -19,10 +19,12 @@ export const measurements = pgTable("measurements", {
   rankSmartblock: integer("rank_smartblock"),
   smartblockStatus: text("smartblock_status").notNull(),
   smartblockConfidence: decimal("smartblock_confidence", { precision: 3, scale: 2 }),
+  smartblockDetails: text("smartblock_details"),
   blogTabRank: integer("blog_tab_rank"),
   searchVolumeAvg: decimal("search_volume_avg", { precision: 10, scale: 2 }),
   durationMs: integer("duration_ms"),
   errorMessage: text("error_message"),
+  method: text("method"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
