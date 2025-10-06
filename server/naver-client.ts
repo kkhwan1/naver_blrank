@@ -30,7 +30,7 @@ export class NaverAPIClient {
       const params = {
         api_key: this.serpApiKey,
         engine: 'naver',
-        q: keyword,
+        query: keyword,
         num: 30,
         no_cache: true,
       };
@@ -109,11 +109,20 @@ export class NaverAPIClient {
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        console.error('SerpAPI Error Details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+        });
         if (error.response?.status === 429) {
           throw new Error('API rate limit exceeded');
         }
+        if (error.response?.data) {
+          throw new Error(`SerpAPI error: ${JSON.stringify(error.response.data)}`);
+        }
         throw new Error(`SerpAPI error: ${error.message}`);
       }
+      console.error('Unexpected error in SerpAPI call:', error);
       throw error;
     }
   }
