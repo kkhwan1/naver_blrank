@@ -82,8 +82,15 @@ export class NaverHTMLParser {
     console.log('\n=== HTML 파싱 시작 ===');
     console.log(`HTML 길이: ${html.length} 바이트`);
     
-    const smartBlockTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
-    console.log(`스마트블록 제목 요소 개수: ${smartBlockTitles.length}`);
+    const footerTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
+    const headerTitles = $('[class*="fds-comps-header-headline"]').toArray()
+      .filter(el => {
+        const text = $(el).text().trim();
+        return text.includes('관련') && text.includes('콘텐츠');
+      });
+    
+    const smartBlockTitles = [...footerTitles, ...headerTitles];
+    console.log(`스마트블록 제목 요소 개수: ${smartBlockTitles.length} (footer: ${footerTitles.length}, header: ${headerTitles.length})`);
 
     for (const titleElement of smartBlockTitles) {
       const $title = $(titleElement);
