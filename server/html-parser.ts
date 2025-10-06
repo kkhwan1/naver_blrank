@@ -82,35 +82,6 @@ export class NaverHTMLParser {
     console.log('\n=== HTML 파싱 시작 ===');
     console.log(`HTML 길이: ${html.length} 바이트`);
     
-    const footerTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
-    const headerTitles = $('[class*="fds-comps-header-headline"]').toArray()
-      .filter(el => {
-        const text = $(el).text().trim();
-        return text.includes('관련') && text.includes('콘텐츠');
-      });
-    
-    const smartBlockTitles = [...footerTitles, ...headerTitles];
-    console.log(`스마트블록 제목 요소 개수: ${smartBlockTitles.length} (footer: ${footerTitles.length}, header: ${headerTitles.length})`);
-
-    for (const titleElement of smartBlockTitles) {
-      const $title = $(titleElement);
-      const categoryName = $title.text().trim();
-      console.log(`\n카테고리 발견: "${categoryName}"`);
-      
-      let $container = $title.closest('div');
-      let depth = 0;
-      while ($container.length > 0 && $container.find('a[href*="blog.naver.com"]').length === 0 && depth < 10) {
-        $container = $container.parent();
-        depth++;
-      }
-      
-      if ($container.length === 0) {
-        console.log(`  -> 컨테이너를 찾을 수 없음`);
-        continue;
-      }
-
-      const links = $container.find('a[href*="blog.naver.com"]').toArray();
-      console.log(`  -> 블로그 링크 ${links.length}개 발견`);
       const categoryBlogs: BlogResult[] = [];
       const categorySeenUrls = new Set<string>();
       
