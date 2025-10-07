@@ -31,7 +31,10 @@ export default function KeywordBlogsTab({ keywordId, keyword }: KeywordBlogsTabP
     queryFn: async () => {
       if (!keywordId) throw new Error('No keyword ID');
       const res = await fetch(`/api/keywords/${keywordId}/blogs?display=20`);
-      if (!res.ok) throw new Error('Failed to fetch blogs');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to fetch blogs');
+      }
       return res.json();
     },
     enabled: !!keywordId,

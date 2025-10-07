@@ -44,7 +44,10 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
     queryFn: async () => {
       if (!keywordId) throw new Error('No keyword ID');
       const res = await fetch(`/api/keywords/${keywordId}/stats`);
-      if (!res.ok) throw new Error('Failed to fetch stats');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to fetch stats');
+      }
       return res.json();
     },
     enabled: !!keywordId,
