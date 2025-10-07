@@ -5,12 +5,16 @@ import { insertKeywordSchema } from "@shared/schema";
 import { NaverAPIClient } from "./naver-client";
 import { SmartBlockParser } from "./smartblock-parser";
 import { NaverHTMLParser } from "./html-parser";
+import { NaverSearchAdClient } from "./naver-searchad-client";
+import { NaverSearchClient } from "./naver-search-client";
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 const naverClient = new NaverAPIClient();
 const smartBlockParser = new SmartBlockParser();
 const htmlParser = new NaverHTMLParser();
+const naverSearchAdClient = new NaverSearchAdClient();
+const naverSearchClient = new NaverSearchClient();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/keywords', async (_req, res) => {
@@ -316,6 +320,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('분석 오류:', error);
       res.status(500).json({
         error: error instanceof Error ? error.message : '분석 중 오류가 발생했습니다'
+      });
+    }
+  });
+
+  app.get('/api/keywords/:id/stats', async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const keyword = await storage.getKeyword(keywordId);
+
+      if (!keyword) {
+        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      }
+
+      const stats = await naverSearchAdClient.getKeywordStats(keyword.keyword);
+      const relatedKeywords = await naverSearchAdClient.getRelatedKeywords(keyword.keyword, 10);
+
+      res.json({
+        keyword: keyword.keyword,
+        stats,
+        relatedKeywords,
+      });
+    } catch (error) {
+      console.error('키워드 통계 조회 오류:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : '키워드 통계 조회 중 오류가 발생했습니다'
+      });
+    }
+  });
+
+  app.get('/api/keywords/:id/blogs', async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const keyword = await storage.getKeyword(keywordId);
+
+      if (!keyword) {
+        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      }
+
+      const display = req.query.display ? parseInt(req.query.display as string) : 10;
+      const start = req.query.start ? parseInt(req.query.start as string) : 1;
+
+      const blogResults = await naverSearchClient.searchBlogs(keyword.keyword, display, start);
+
+      res.json({
+        keyword: keyword.keyword,
+        ...blogResults,
+      });
+    } catch (error) {
+      console.error('블로그 검색 오류:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : '블로그 검색 중 오류가 발생했습니다'
       });
     }
   });
