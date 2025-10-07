@@ -35,7 +35,13 @@ export class NaverSearchAdClient {
     this.customerId = process.env.NAVER_SEARCHAD_CUSTOMER_ID || '';
     this.accessLicense = process.env.NAVER_SEARCHAD_ACCESS_LICENSE || '';
     this.secretKey = process.env.NAVER_SEARCHAD_SECRET_KEY || '';
-    this.baseUrl = 'https://api.naver.com';
+    this.baseUrl = 'https://api.searchad.naver.com';
+  }
+
+  private validateCredentials(): void {
+    if (!this.customerId || !this.accessLicense || !this.secretKey) {
+      throw new Error('Naver Search Ad API credentials not configured. Please set NAVER_SEARCHAD_CUSTOMER_ID, NAVER_SEARCHAD_ACCESS_LICENSE, and NAVER_SEARCHAD_SECRET_KEY environment variables.');
+    }
   }
 
   private generateSignature(timestamp: string, method: string, uri: string): string {
@@ -46,6 +52,8 @@ export class NaverSearchAdClient {
   }
 
   async getKeywordStats(keyword: string): Promise<KeywordStats | null> {
+    this.validateCredentials();
+    
     try {
       const timestamp = Date.now().toString();
       const method = 'GET';
@@ -84,6 +92,8 @@ export class NaverSearchAdClient {
   }
 
   async getRelatedKeywords(keyword: string, limit: number = 10): Promise<RelatedKeyword[]> {
+    this.validateCredentials();
+    
     try {
       const timestamp = Date.now().toString();
       const method = 'GET';

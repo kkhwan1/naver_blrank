@@ -27,7 +27,15 @@ export class NaverSearchClient {
     this.baseUrl = 'https://openapi.naver.com/v1/search';
   }
 
+  private validateCredentials(): void {
+    if (!this.clientId || !this.clientSecret) {
+      throw new Error('Naver Search API credentials not configured. Please set NAVER_CLIENT_ID and NAVER_CLIENT_SECRET environment variables.');
+    }
+  }
+
   async searchBlogs(keyword: string, display: number = 10, start: number = 1): Promise<BlogSearchResponse> {
+    this.validateCredentials();
+    
     try {
       const response = await axios.get(`${this.baseUrl}/blog.json`, {
         params: {
