@@ -16,7 +16,7 @@ export const sessions = pgTable(
 
 // User storage table
 export const users = pgTable("users", {
-  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"), // 'admin' or 'user'
@@ -26,7 +26,7 @@ export const users = pgTable("users", {
 
 export const keywords = pgTable("keywords", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
-  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }), // Nullable initially for migration
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Nullable for migration
   keyword: text("keyword").notNull(),
   targetUrl: text("target_url").notNull(),
   isActive: boolean("is_active").notNull().default(true),

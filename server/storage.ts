@@ -8,8 +8,10 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
   
   getKeywords(): Promise<Keyword[]>;
+  getKeywordsByUser(userId: string): Promise<Keyword[]>;
   getKeyword(id: number): Promise<Keyword | undefined>;
   createKeyword(keyword: InsertKeyword): Promise<Keyword>;
   updateKeyword(id: number, data: Partial<InsertKeyword>): Promise<Keyword | undefined>;
@@ -48,15 +50,34 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const now = new Date();
+    const user: User = { 
+      ...insertUser, 
+      id,
+      role: insertUser.role ?? "user",
+      createdAt: now,
+      updatedAt: now,
+    };
     this.users.set(id, user);
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values()).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }
 
   async getKeywords(): Promise<Keyword[]> {
     return Array.from(this.keywords.values()).sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  }
+
+  async getKeywordsByUser(userId: string): Promise<Keyword[]> {
+    return Array.from(this.keywords.values())
+      .filter(k => k.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   async getKeyword(id: number): Promise<Keyword | undefined> {
@@ -68,6 +89,7 @@ export class MemStorage implements IStorage {
     const now = new Date();
     const keyword: Keyword = {
       id,
+      userId: insertKeyword.userId ?? null,
       keyword: insertKeyword.keyword,
       targetUrl: insertKeyword.targetUrl,
       isActive: insertKeyword.isActive ?? true,
@@ -184,8 +206,16 @@ class PostgresStorage implements IStorage {
     return result[0];
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return await this.db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
   async getKeywords(): Promise<Keyword[]> {
     return await this.db.select().from(keywords).orderBy(desc(keywords.createdAt));
+  }
+
+  async getKeywordsByUser(userId: string): Promise<Keyword[]> {
+    return await this.db.select().from(keywords).where(eq(keywords.userId, userId)).orderBy(desc(keywords.createdAt));
   }
 
   async getKeyword(id: number): Promise<Keyword | undefined> {

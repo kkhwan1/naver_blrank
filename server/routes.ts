@@ -1,12 +1,14 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertKeywordSchema } from "@shared/schema";
+import { insertKeywordSchema, insertUserSchema } from "@shared/schema";
 import { NaverAPIClient } from "./naver-client";
 import { SmartBlockParser } from "./smartblock-parser";
 import { NaverHTMLParser } from "./html-parser";
 import { NaverSearchAdClient } from "./naver-searchad-client";
 import { NaverSearchClient } from "./naver-search-client";
+import passport from "./auth";
+import bcrypt from "bcrypt";
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
@@ -16,10 +18,140 @@ const htmlParser = new NaverHTMLParser();
 const naverSearchAdClient = new NaverSearchAdClient();
 const naverSearchClient = new NaverSearchClient();
 
+// Authentication middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: "로그인이 필요합니다" });
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated() && (req.user as any).role === "admin") {
+    return next();
+  }
+  res.status(403).json({ error: "관리자 권한이 필요합니다" });
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.get('/api/keywords', async (_req, res) => {
+  // Authentication routes
+  app.post('/api/register', async (req, res) => {
     try {
-      const keywords = await storage.getKeywords();
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ 
+          error: '아이디와 비밀번호를 입력해주세요'
+        });
+      }
+
+      // Validate username and password
+      if (username.length < 3 || username.length > 20) {
+        return res.status(400).json({ error: '아이디는 3-20자 사이여야 합니다' });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ error: '비밀번호는 최소 6자 이상이어야 합니다' });
+      }
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: '이미 사용 중인 아이디입니다' });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user (ALWAYS as regular user, never trust client-provided role)
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        role: 'user', // Force user role, admin must be created manually
+      });
+
+      // Auto-login after registration
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: '로그인 중 오류가 발생했습니다' });
+        }
+        res.status(201).json({
+          id: user.id,
+          username: user.username,
+          role: user.role,
+        });
+      });
+    } catch (error) {
+      console.error('회원가입 오류:', error);
+      res.status(500).json({ error: '회원가입 중 오류가 발생했습니다' });
+    }
+  });
+
+  app.post('/api/login', (req, res, next) => {
+    passport.authenticate('local', (err: any, user: any, info: any) => {
+      if (err) {
+        return res.status(500).json({ error: '로그인 중 오류가 발생했습니다' });
+      }
+      if (!user) {
+        return res.status(401).json({ error: info?.message || '로그인 실패' });
+      }
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: '로그인 중 오류가 발생했습니다' });
+        }
+        res.json({
+          id: user.id,
+          username: user.username,
+          role: user.role,
+        });
+      });
+    })(req, res, next);
+  });
+
+  app.post('/api/logout', (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ error: '로그아웃 중 오류가 발생했습니다' });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  app.get('/api/user', (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: '로그인이 필요합니다' });
+    }
+    const user = req.user as any;
+    res.json({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    });
+  });
+
+  app.get('/api/users', requireAdmin, async (_req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users.map(u => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+        createdAt: u.createdAt,
+      })));
+    } catch (error) {
+      console.error('사용자 목록 조회 오류:', error);
+      res.status(500).json({ error: '사용자 목록 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  // Keyword routes (protected)
+  app.get('/api/keywords', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      // Admin can see all keywords, regular users only see their own
+      const keywords = user.role === 'admin' 
+        ? await storage.getKeywords()
+        : await storage.getKeywordsByUser(user.id);
       const latestMeasurements = await storage.getLatestMeasurements();
       const previousMeasurements = await storage.getPreviousMeasurements();
 
@@ -67,8 +199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/keywords', async (req, res) => {
+  app.post('/api/keywords', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const result = insertKeywordSchema.safeParse(req.body);
       
       if (!result.success) {
@@ -78,7 +211,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const keyword = await storage.createKeyword(result.data);
+      // Automatically assign userId
+      const keyword = await storage.createKeyword({
+        ...result.data,
+        userId: user.id,
+      });
       res.status(201).json(keyword);
     } catch (error) {
       console.error('키워드 생성 오류:', error);
@@ -86,30 +223,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/keywords/:id', async (req, res) => {
+  app.delete('/api/keywords/:id', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const id = parseInt(req.params.id);
-      const deleted = await storage.deleteKeyword(id);
       
-      if (!deleted) {
+      // Check ownership
+      const keyword = await storage.getKeyword(id);
+      if (!keyword) {
         return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
       }
 
-      res.json({ success: true });
+      // Admin can delete any keyword, users can only delete their own
+      if (user.role !== 'admin' && keyword.userId !== user.id) {
+        return res.status(403).json({ error: '권한이 없습니다' });
+      }
+
+      const deleted = await storage.deleteKeyword(id);
+      res.json({ success: deleted });
     } catch (error) {
       console.error('키워드 삭제 오류:', error);
       res.status(500).json({ error: '키워드 삭제 중 오류가 발생했습니다' });
     }
   });
 
-  app.post('/api/measure/:id', async (req, res) => {
+  app.post('/api/measure/:id', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const keywordId = parseInt(req.params.id);
       const method = (req.query.method as string) || 'html-parser';
       const keyword = await storage.getKeyword(keywordId);
 
       if (!keyword) {
         return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      }
+
+      // Check ownership
+      if (user.role !== 'admin' && keyword.userId !== user.id) {
+        return res.status(403).json({ error: '권한이 없습니다' });
       }
 
       const startTime = Date.now();
@@ -237,10 +388,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/measurements/:keywordId', async (req, res) => {
+  app.get('/api/measurements/:keywordId', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const keywordId = parseInt(req.params.keywordId);
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 30;
+      
+      // Check ownership
+      const keyword = await storage.getKeyword(keywordId);
+      if (!keyword) {
+        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      }
+      
+      if (user.role !== 'admin' && keyword.userId !== user.id) {
+        return res.status(403).json({ error: '권한이 없습니다' });
+      }
       
       const measurements = await storage.getMeasurements(keywordId, limit);
       res.json(measurements);
