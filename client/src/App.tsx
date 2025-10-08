@@ -5,8 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute } from "@/components/AdminRoute";
 import Dashboard from "@/pages/Dashboard";
 import UrlAnalyzer from "@/pages/UrlAnalyzer";
+import AdminDashboard from "@/pages/admin/dashboard";
 import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
 
@@ -15,6 +17,11 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/admin">
+        <AdminRoute>
+          <AdminDashboard />
+        </AdminRoute>
+      </Route>
       <Route path="/">
         <ProtectedRoute>
           <Dashboard />

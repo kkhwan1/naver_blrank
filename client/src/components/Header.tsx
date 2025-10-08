@@ -63,6 +63,19 @@ export default function Header({ onAddKeyword }: HeaderProps) {
                   대시보드
                 </Button>
               </Link>
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button
+                    variant={location === '/admin' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="gap-2"
+                    data-testid="link-admin-dashboard"
+                  >
+                    <User className="w-4 h-4" />
+                    관리자
+                  </Button>
+                </Link>
+              )}
             </nav>
           </div>
 

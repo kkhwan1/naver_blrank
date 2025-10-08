@@ -144,6 +144,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin dashboard routes
+  app.get('/api/admin/users-stats', requireAdmin, async (_req, res) => {
+    try {
+      const stats = await storage.getUsersWithStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('사용자 통계 조회 오류:', error);
+      res.status(500).json({ error: '사용자 통계 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  app.get('/api/admin/users/:userId/activities', requireAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: '사용자를 찾을 수 없습니다' });
+      }
+      
+      const keywords = await storage.getKeywordsByUser(userId);
+      const measurements = await storage.getMeasurementsByUser(userId, limit);
+      
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+        },
+        keywords,
+        measurements,
+      });
+    } catch (error) {
+      console.error('사용자 활동 조회 오류:', error);
+      res.status(500).json({ error: '사용자 활동 조회 중 오류가 발생했습니다' });
+    }
+  });
+
   // Keyword routes (protected)
   app.get('/api/keywords', requireAuth, async (req, res) => {
     try {

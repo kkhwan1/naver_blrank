@@ -2,13 +2,21 @@ import { type User, type InsertUser, type Keyword, type InsertKeyword, type Meas
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
+
+export interface UserStats {
+  user: User;
+  keywordCount: number;
+  measurementCount: number;
+  lastActivityAt: Date | null;
+}
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  getUsersWithStats(): Promise<UserStats[]>;
   
   getKeywords(): Promise<Keyword[]>;
   getKeywordsByUser(userId: string): Promise<Keyword[]>;
@@ -18,6 +26,7 @@ export interface IStorage {
   deleteKeyword(id: number): Promise<boolean>;
   
   getMeasurements(keywordId: number, limit?: number): Promise<Measurement[]>;
+  getMeasurementsByUser(userId: string, limit?: number): Promise<Measurement[]>;
   createMeasurement(measurement: InsertMeasurement): Promise<Measurement>;
   getLatestMeasurements(): Promise<Map<number, Measurement>>;
   getPreviousMeasurements(): Promise<Map<number, Measurement>>;
@@ -66,6 +75,24 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+  }
+
+  async getUsersWithStats(): Promise<UserStats[]> {
+    const allUsers = await this.getAllUsers();
+    return allUsers.map(user => {
+      const userKeywords = Array.from(this.keywords.values()).filter(k => k.userId === user.id);
+      const keywordIds = userKeywords.map(k => k.id);
+      const userMeasurements = Array.from(this.measurements.values())
+        .filter(m => keywordIds.includes(m.keywordId))
+        .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime());
+      
+      return {
+        user,
+        keywordCount: userKeywords.length,
+        measurementCount: userMeasurements.length,
+        lastActivityAt: userMeasurements[0]?.measuredAt ?? null,
+      };
+    });
   }
 
   async getKeywords(): Promise<Keyword[]> {
@@ -126,6 +153,15 @@ export class MemStorage implements IStorage {
   async getMeasurements(keywordId: number, limit: number = 100): Promise<Measurement[]> {
     return Array.from(this.measurements.values())
       .filter(m => m.keywordId === keywordId)
+      .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
+      .slice(0, limit);
+  }
+
+  async getMeasurementsByUser(userId: string, limit: number = 50): Promise<Measurement[]> {
+    const userKeywords = await this.getKeywordsByUser(userId);
+    const keywordIds = userKeywords.map(k => k.id);
+    return Array.from(this.measurements.values())
+      .filter(m => keywordIds.includes(m.keywordId))
       .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
       .slice(0, limit);
   }
@@ -210,6 +246,45 @@ class PostgresStorage implements IStorage {
     return await this.db.select().from(users).orderBy(desc(users.createdAt));
   }
 
+  async getUsersWithStats(): Promise<UserStats[]> {
+    const allUsers = await this.getAllUsers();
+    const stats: UserStats[] = [];
+    
+    for (const user of allUsers) {
+      const userKeywords = await this.getKeywordsByUser(user.id);
+      const keywordIds = userKeywords.map(k => k.id);
+      
+      let measurementCount = 0;
+      let lastActivityAt: Date | null = null;
+      
+      if (keywordIds.length > 0) {
+        const userMeasurements = await this.db.select()
+          .from(measurements)
+          .where(inArray(measurements.keywordId, keywordIds))
+          .orderBy(desc(measurements.measuredAt))
+          .limit(1);
+        
+        if (userMeasurements.length > 0) {
+          lastActivityAt = userMeasurements[0].measuredAt;
+        }
+        
+        const countResult = await this.db.select()
+          .from(measurements)
+          .where(inArray(measurements.keywordId, keywordIds));
+        measurementCount = countResult.length;
+      }
+      
+      stats.push({
+        user,
+        keywordCount: userKeywords.length,
+        measurementCount,
+        lastActivityAt,
+      });
+    }
+    
+    return stats;
+  }
+
   async getKeywords(): Promise<Keyword[]> {
     return await this.db.select().from(keywords).orderBy(desc(keywords.createdAt));
   }
@@ -245,6 +320,21 @@ class PostgresStorage implements IStorage {
     return await this.db.select()
       .from(measurements)
       .where(eq(measurements.keywordId, keywordId))
+      .orderBy(desc(measurements.measuredAt))
+      .limit(limit);
+  }
+
+  async getMeasurementsByUser(userId: string, limit: number = 50): Promise<Measurement[]> {
+    const userKeywords = await this.getKeywordsByUser(userId);
+    const keywordIds = userKeywords.map(k => k.id);
+    
+    if (keywordIds.length === 0) {
+      return [];
+    }
+    
+    return await this.db.select()
+      .from(measurements)
+      .where(inArray(measurements.keywordId, keywordIds))
       .orderBy(desc(measurements.measuredAt))
       .limit(limit);
   }
