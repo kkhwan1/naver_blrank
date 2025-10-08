@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Moon, Sun, BarChart3, Link as LinkIcon } from 'lucide-react';
+import { Search, Plus, Moon, Sun, BarChart3, Link as LinkIcon, LogOut, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useAuth } from '@/hooks/use-auth';
 
 interface HeaderProps {
   onAddKeyword?: () => void;
@@ -11,6 +12,7 @@ interface HeaderProps {
 export default function Header({ onAddKeyword }: HeaderProps) {
   const [darkMode, setDarkMode] = useState(false);
   const [location] = useLocation();
+  const { user, logout, isAdmin } = useAuth();
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
@@ -88,6 +90,32 @@ export default function Header({ onAddKeyword }: HeaderProps) {
                 <Plus className="w-4 h-4 mr-2" />
                 키워드 추가
               </Button>
+            )}
+
+            {user && (
+              <div className="flex items-center gap-2 ml-2">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-muted rounded-md">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium" data-testid="text-username">
+                    {user.username}
+                  </span>
+                  {isAdmin && (
+                    <span className="text-xs px-2 py-0.5 bg-primary text-primary-foreground rounded-full">
+                      관리자
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  data-testid="button-logout"
+                  className="gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">로그아웃</span>
+                </Button>
+              </div>
             )}
           </div>
         </div>
