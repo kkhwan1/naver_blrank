@@ -61,6 +61,21 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
     return `${(num * 100).toFixed(2)}%`;
   };
 
+  // Helper function to parse search volume (can be string like "< 10" or number)
+  const parseSearchVolume = (value: string | number): number => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      // Handle "< 10" format - return 5 as estimate
+      if (value.includes('<')) return 5;
+      // Handle "> 1000000" format - return 1000000 as estimate
+      if (value.includes('>')) return parseInt(value.replace(/[^0-9]/g, '')) || 1000000;
+      // Try to parse as number
+      const parsed = parseInt(value.replace(/,/g, ''));
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
   const getCompetitionLevel = (compIdx: string) => {
     const level = parseFloat(compIdx);
     if (level >= 80) return { label: '매우 높음', variant: 'destructive' as const };
@@ -96,9 +111,11 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
   }
 
   const stats = data.stats;
-  const totalSearchVolume = stats.monthlyPcQcCnt + stats.monthlyMobileQcCnt;
+  const pcVolume = parseSearchVolume(stats.monthlyPcQcCnt);
+  const mobileVolume = parseSearchVolume(stats.monthlyMobileQcCnt);
+  const totalSearchVolume = pcVolume + mobileVolume;
   const totalClicks = stats.monthlyAvePcClkCnt + stats.monthlyAveMobileClkCnt;
-  const mobileRatio = totalSearchVolume > 0 ? (stats.monthlyMobileQcCnt / totalSearchVolume) : 0;
+  const mobileRatio = totalSearchVolume > 0 ? (mobileVolume / totalSearchVolume) : 0;
   const competition = getCompetitionLevel(stats.compIdx);
 
   return (
@@ -116,8 +133,8 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
                 <p className="text-sm text-muted-foreground">월간 총 검색량</p>
                 <p className="text-2xl font-bold">{formatNumber(totalSearchVolume)}</p>
                 <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                  <span>PC: {formatNumber(stats.monthlyPcQcCnt)}</span>
-                  <span>모바일: {formatNumber(stats.monthlyMobileQcCnt)}</span>
+                  <span>PC: {typeof stats.monthlyPcQcCnt === 'string' ? stats.monthlyPcQcCnt : formatNumber(stats.monthlyPcQcCnt)}</span>
+                  <span>모바일: {typeof stats.monthlyMobileQcCnt === 'string' ? stats.monthlyMobileQcCnt : formatNumber(stats.monthlyMobileQcCnt)}</span>
                 </div>
               </div>
             </div>
@@ -191,7 +208,9 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
           <h3 className="font-semibold mb-3">연관 키워드</h3>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {data.relatedKeywords.map((rk, idx) => {
-              const totalVol = rk.monthlyPcQcCnt + rk.monthlyMobileQcCnt;
+              const rkPcVol = parseSearchVolume(rk.monthlyPcQcCnt);
+              const rkMobileVol = parseSearchVolume(rk.monthlyMobileQcCnt);
+              const totalVol = rkPcVol + rkMobileVol;
               const comp = getCompetitionLevel(rk.compIdx);
               
               return (

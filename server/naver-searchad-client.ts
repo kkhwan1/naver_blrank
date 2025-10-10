@@ -3,8 +3,8 @@ import crypto from 'crypto';
 
 export interface KeywordStats {
   relKeyword: string;
-  monthlyPcQcCnt: number;
-  monthlyMobileQcCnt: number;
+  monthlyPcQcCnt: string | number;  // API returns string for low values (e.g. "< 10")
+  monthlyMobileQcCnt: string | number;  // API returns string for low values (e.g. "< 10")
   monthlyAvePcClkCnt: number;
   monthlyAveMobileClkCnt: number;
   monthlyAvePcCtr: number;
@@ -15,8 +15,8 @@ export interface KeywordStats {
 
 export interface RelatedKeyword {
   relKeyword: string;
-  monthlyPcQcCnt: number;
-  monthlyMobileQcCnt: number;
+  monthlyPcQcCnt: string | number;  // API returns string for low values (e.g. "< 10")
+  monthlyMobileQcCnt: string | number;  // API returns string for low values (e.g. "< 10")
   monthlyAvePcClkCnt: number;
   monthlyAveMobileClkCnt: number;
   monthlyAvePcCtr: number;

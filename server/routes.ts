@@ -315,13 +315,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let searchMethod = method;
         let categories: any[] = [];
 
+        // Helper function to parse search volume (can be string like "< 10" or number)
+        const parseSearchVolume = (value: string | number): number => {
+          if (typeof value === 'number') return value;
+          if (typeof value === 'string') {
+            // Handle "< 10" format - return 5 as estimate
+            if (value.includes('<')) return 5;
+            // Handle "> 1000000" format - return 1000000 as estimate
+            if (value.includes('>')) return parseInt(value.replace(/[^0-9]/g, '')) || 1000000;
+            // Try to parse as number
+            const parsed = parseInt(value.replace(/,/g, ''));
+            return isNaN(parsed) ? 0 : parsed;
+          }
+          return 0;
+        };
+
         // Fetch search volume from Naver Search Ad API
         let searchVolumeStr: string | null = null;
         try {
           const keywordStats = await naverSearchAdClient.getKeywordStats(keyword.keyword);
           if (keywordStats) {
             // Calculate average monthly search volume (PC + Mobile)
-            const avgVolume = Math.round((keywordStats.monthlyPcQcCnt + keywordStats.monthlyMobileQcCnt) / 2);
+            const pcVolume = parseSearchVolume(keywordStats.monthlyPcQcCnt);
+            const mobileVolume = parseSearchVolume(keywordStats.monthlyMobileQcCnt);
+            const avgVolume = Math.round((pcVolume + mobileVolume) / 2);
             searchVolumeStr = avgVolume.toString();
             console.log(`[Search Volume] ${keyword.keyword}: ${avgVolume}`);
           }
@@ -606,8 +623,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
       }
 
+      console.log('[키워드 통계] 요청:', keyword.keyword);
       const stats = await naverSearchAdClient.getKeywordStats(keyword.keyword);
       const relatedKeywords = await naverSearchAdClient.getRelatedKeywords(keyword.keyword, 10);
+
+      console.log('[키워드 통계] 응답:', {
+        keyword: keyword.keyword,
+        stats: stats ? {
+          monthlyPcQcCnt: stats.monthlyPcQcCnt,
+          monthlyMobileQcCnt: stats.monthlyMobileQcCnt,
+          compIdx: stats.compIdx,
+        } : null,
+        relatedKeywordsCount: relatedKeywords.length,
+      });
 
       res.json({
         keyword: keyword.keyword,
