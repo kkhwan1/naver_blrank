@@ -79,7 +79,9 @@ export class MeasurementScheduler {
           try {
             const keywordStats = await this.naverSearchAdClient.getKeywordStats(keyword.keyword);
             if (keywordStats) {
-              const avgVolume = Math.round((keywordStats.monthlyPcQcCnt + keywordStats.monthlyMobileQcCnt) / 2);
+              const pcQcCnt = typeof keywordStats.monthlyPcQcCnt === 'string' ? parseFloat(keywordStats.monthlyPcQcCnt) : keywordStats.monthlyPcQcCnt;
+              const mobileQcCnt = typeof keywordStats.monthlyMobileQcCnt === 'string' ? parseFloat(keywordStats.monthlyMobileQcCnt) : keywordStats.monthlyMobileQcCnt;
+              const avgVolume = Math.round((pcQcCnt + mobileQcCnt) / 2);
               searchVolumeStr = avgVolume.toString();
               console.log(`[Search Volume] ${keyword.keyword}: ${avgVolume}`);
             }
@@ -122,6 +124,29 @@ export class MeasurementScheduler {
             blogResults
           );
 
+          // Phase 1: 통합검색 이탈 감지 - rank가 있지만 CSS로 숨겨진 경우 체크
+          let isVisibleInSearch: boolean | undefined = undefined;
+          let hiddenReason: string | undefined = undefined;
+          let smartblockStatus = rankResult.rank ? 'OK' : 'NOT_IN_BLOCK';
+
+          if (rankResult.rank && rankResult.matchedUrl) {
+            // 매칭된 블로그의 visibility 정보 찾기
+            const matchedBlog = blogResults.find(b => 
+              this.smartBlockParser.normalizeUrl(b.url) === this.smartBlockParser.normalizeUrl(rankResult.matchedUrl)
+            );
+
+            if (matchedBlog) {
+              isVisibleInSearch = matchedBlog.isVisible;
+              hiddenReason = matchedBlog.hiddenReason;
+
+              // 순위는 있지만 실제로는 숨겨진 경우 (통합검색 이탈)
+              if (matchedBlog.isVisible === false) {
+                smartblockStatus = 'RANKED_BUT_HIDDEN';
+                console.log(`⚠️ 통합검색 이탈 감지! Keyword #${keyword.id}: rank=${rankResult.rank}, hidden_reason=${hiddenReason}`);
+              }
+            }
+          }
+
           const detailedCategories = categories.length > 0 
             ? categories.map(category => {
                 const categoryRankResult = this.smartBlockParser.findRank(
@@ -163,15 +188,17 @@ export class MeasurementScheduler {
             keywordId: keyword.id,
             measuredAt: new Date(),
             rankSmartblock: rankResult.rank,
-            smartblockStatus: rankResult.rank ? 'OK' : 'NOT_IN_BLOCK',
+            smartblockStatus,
             smartblockConfidence: rankResult.confidence.toFixed(2),
             smartblockDetails: detailedCategories.length > 0 ? JSON.stringify(detailedCategories) : null,
+            isVisibleInSearch,
+            hiddenReason,
             searchVolumeAvg: searchVolumeStr,
             durationMs: Date.now() - startTime,
             method: 'html-parser',
           });
 
-          console.log(`Measurement completed for keyword #${keyword.id}: rank=${rankResult.rank}, status=${rankResult.rank ? 'OK' : 'NOT_IN_BLOCK'}`);
+          console.log(`Measurement completed for keyword #${keyword.id}: rank=${rankResult.rank}, status=${smartblockStatus}, visible=${isVisibleInSearch}`);
         } catch (error) {
           console.error(`Error measuring keyword #${keyword.id}:`, error);
           

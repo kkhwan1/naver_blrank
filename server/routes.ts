@@ -387,6 +387,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           blogResults
         );
 
+        // Phase 1: 통합검색 이탈 감지 - rank가 있지만 CSS로 숨겨진 경우 체크
+        let isVisibleInSearch: boolean | undefined = undefined;
+        let hiddenReason: string | undefined = undefined;
+        let smartblockStatus = rankResult.rank ? 'OK' : 'NOT_IN_BLOCK';
+
+        if (rankResult.rank && rankResult.matchedUrl) {
+          // 매칭된 블로그의 visibility 정보 찾기
+          const matchedBlog = blogResults.find((b: any) => 
+            smartBlockParser.normalizeUrl(b.url) === smartBlockParser.normalizeUrl(rankResult.matchedUrl)
+          );
+
+          if (matchedBlog) {
+            isVisibleInSearch = matchedBlog.isVisible;
+            hiddenReason = matchedBlog.hiddenReason;
+
+            // 순위는 있지만 실제로는 숨겨진 경우 (통합검색 이탈)
+            if (matchedBlog.isVisible === false) {
+              smartblockStatus = 'RANKED_BUT_HIDDEN';
+              console.log(`⚠️ 통합검색 이탈 감지! Keyword #${keyword.id}: rank=${rankResult.rank}, hidden_reason=${hiddenReason}`);
+            }
+          }
+        }
+
         const detailedCategories = categories.length > 0 
           ? categories.map(category => {
               const categoryRankResult = smartBlockParser.findRank(
@@ -427,9 +450,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           keywordId: keyword.id,
           measuredAt: new Date(),
           rankSmartblock: rankResult.rank,
-          smartblockStatus: rankResult.rank ? 'OK' : 'NOT_IN_BLOCK',
+          smartblockStatus,
           smartblockConfidence: rankResult.confidence.toFixed(2),
           smartblockDetails: detailedCategories.length > 0 ? JSON.stringify(detailedCategories) : null,
+          isVisibleInSearch,
+          hiddenReason,
           searchVolumeAvg: searchVolumeStr,
           durationMs: Date.now() - startTime,
           method: searchMethod,
