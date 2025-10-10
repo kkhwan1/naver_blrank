@@ -45,7 +45,7 @@ export default function AdminDashboard() {
   });
 
   const { data: activityData } = useQuery<UserActivity>({
-    queryKey: ["/api/admin/users", selectedUserId, "activities"],
+    queryKey: [`/api/admin/users/${selectedUserId}/activities`],
     enabled: !!selectedUserId,
   });
 
