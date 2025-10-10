@@ -185,10 +185,15 @@ export class NaverHTMLParser {
           categorySeenUrls.add(blogUrl);
           const title = $link.text().trim() || $link.attr('aria-label') || $link.attr('title') || '';
           
+          // Phase 1: CSS visibility 체크
+          const visibilityCheck = this.checkElementVisibility($link, $);
+          
           categoryBlogs.push({
             url: blogUrl,
             title: title || '제목 없음',
             position: categoryBlogs.length,
+            isVisible: visibilityCheck.isVisible,
+            hiddenReason: visibilityCheck.hiddenReason,
           });
           
           if (!seenUrls.has(blogUrl)) {
@@ -197,6 +202,8 @@ export class NaverHTMLParser {
               url: blogUrl,
               title: title || '제목 없음',
               position: blogResults.length,
+              isVisible: visibilityCheck.isVisible,
+              hiddenReason: visibilityCheck.hiddenReason,
             });
           }
         }
@@ -218,17 +225,23 @@ export class NaverHTMLParser {
       console.log(`전체 블로그 링크 개수: ${allLinks.length}`);
       
       for (const link of allLinks.slice(0, 10)) {
-        const href = $(link).attr('href') || '';
+        const $link = $(link);
+        const href = $link.attr('href') || '';
         const blogUrl = this.extractBlogUrl(href);
         
         if (blogUrl && !seenUrls.has(blogUrl)) {
           seenUrls.add(blogUrl);
-          const title = $(link).text().trim() || $(link).attr('aria-label') || '제목 없음';
+          const title = $link.text().trim() || $link.attr('aria-label') || '제목 없음';
+          
+          // Phase 1: CSS visibility 체크
+          const visibilityCheck = this.checkElementVisibility($link, $);
           
           blogResults.push({
             url: blogUrl,
             title,
             position: blogResults.length,
+            isVisible: visibilityCheck.isVisible,
+            hiddenReason: visibilityCheck.hiddenReason,
           });
         }
       }
@@ -250,6 +263,38 @@ export class NaverHTMLParser {
       categories,
       totalBlogs: blogResults.length,
     };
+  }
+
+  private checkElementVisibility($element: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): { isVisible: boolean; hiddenReason?: string } {
+    let $current = $element;
+    let depth = 0;
+    const maxDepth = 10;
+
+    while ($current.length > 0 && depth < maxDepth) {
+      const style = $current.attr('style') || '';
+      const className = $current.attr('class') || '';
+
+      if (style.includes('display:none') || style.includes('display: none')) {
+        return { isVisible: false, hiddenReason: 'display_none' };
+      }
+
+      if (style.includes('visibility:hidden') || style.includes('visibility: hidden')) {
+        return { isVisible: false, hiddenReason: 'visibility_hidden' };
+      }
+
+      if (style.includes('opacity:0') || style.includes('opacity: 0')) {
+        return { isVisible: false, hiddenReason: 'opacity_zero' };
+      }
+
+      if (className.includes('hidden') || className.includes('d-none') || className.includes('display-none')) {
+        return { isVisible: false, hiddenReason: 'css_class_hidden' };
+      }
+
+      $current = $current.parent();
+      depth++;
+    }
+
+    return { isVisible: true };
   }
 
   private extractBlogUrl(url: string): string | null {

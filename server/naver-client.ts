@@ -4,6 +4,8 @@ export interface BlogResult {
   url: string;
   title: string;
   position: number;
+  isVisible?: boolean; // Phase 1: CSS visibility 체크 결과
+  hiddenReason?: string; // Phase 1: 숨겨진 이유 ('css_hidden', 'display_none', 'visibility_hidden', 'opacity_zero')
 }
 
 export interface SearchResult {
