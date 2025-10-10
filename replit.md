@@ -26,6 +26,15 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **October 10, 2025**:
+- **Ranking Visualization Chart**:
+  - Implemented RankingChart component using Recharts
+  - Line chart with reversed Y-axis (lower rank appears higher)
+  - Custom tooltip showing measurement time, rank, and status
+  - Statistics cards: best rank, current rank, measurement count
+  - Reference lines for rank boundaries (1st, 2nd, 3rd)
+  - Integrated into MeasurementDetailDialog as 4th tab ("순위 변동")
+  - Filters measurements by rankSmartblock (only shows ranked measurements)
+  - Empty state handling for keywords without measurement data
 - **Automated Measurement Scheduling System**:
   - Implemented node-cron based scheduler for automatic measurements
   - Four cron jobs: 1h (hourly), 6h (every 6 hours), 12h (twice daily), 24h (daily at midnight)
