@@ -215,6 +215,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
+        const searchVolume = measurement?.searchVolumeAvg 
+          ? parseInt(measurement.searchVolumeAvg) 
+          : null;
+
         return {
           id: keyword.id.toString(),
           keyword: keyword.keyword,
@@ -226,6 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastMeasured: measurement?.measuredAt 
             ? new Date(measurement.measuredAt).toISOString() 
             : null,
+          searchVolume,
           createdAt: keyword.createdAt,
           isActive: keyword.isActive,
         };
@@ -309,6 +314,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let searchMethod = method;
         let categories: any[] = [];
 
+        // Fetch search volume from Naver Search Ad API
+        let searchVolumeStr: string | null = null;
+        try {
+          const keywordStats = await naverSearchAdClient.getKeywordStats(keyword.keyword);
+          if (keywordStats) {
+            // Calculate average monthly search volume (PC + Mobile)
+            const avgVolume = Math.round((keywordStats.monthlyPcQcCnt + keywordStats.monthlyMobileQcCnt) / 2);
+            searchVolumeStr = avgVolume.toString();
+            console.log(`[Search Volume] ${keyword.keyword}: ${avgVolume}`);
+          }
+        } catch (volumeError) {
+          console.error('[Search Volume Error]', volumeError);
+          // Don't fail the entire measurement if search volume fetch fails
+        }
+
         if (method === 'html-parser') {
           const htmlResult = await htmlParser.searchNaver(keyword.keyword);
           blogResults = htmlResult.blogResults;
@@ -336,6 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               topBlogs: [],
               message: '해당 키워드로 스마트블록을 찾을 수 없습니다.'
             }]),
+            searchVolumeAvg: searchVolumeStr,
             durationMs: Date.now() - startTime,
             method: searchMethod,
           });
@@ -391,6 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           smartblockStatus: rankResult.rank ? 'OK' : 'NOT_IN_BLOCK',
           smartblockConfidence: rankResult.confidence.toFixed(2),
           smartblockDetails: detailedCategories.length > 0 ? JSON.stringify(detailedCategories) : null,
+          searchVolumeAvg: searchVolumeStr,
           durationMs: Date.now() - startTime,
           method: searchMethod,
         });
@@ -414,6 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rankSmartblock: null,
           smartblockStatus: 'ERROR',
           smartblockConfidence: '0',
+          searchVolumeAvg: null,
           errorMessage: error instanceof Error ? error.message : '알 수 없는 오류',
           durationMs: Date.now() - startTime,
           method: method,

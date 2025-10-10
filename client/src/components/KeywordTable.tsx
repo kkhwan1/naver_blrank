@@ -45,6 +45,7 @@ export interface KeywordData {
   lastMeasured: string;
   targetUrl: string;
   status: 'rank1' | 'rank2-3' | 'out' | 'error';
+  searchVolume?: number | null;
   smartblockCategories?: SmartblockCategory[] | null;
 }
 
@@ -112,6 +113,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
               <TableHead>키워드</TableHead>
               <TableHead className="text-right">현재 순위</TableHead>
               <TableHead className="text-right">변동</TableHead>
+              <TableHead className="text-right">월간 검색량</TableHead>
               <TableHead>마지막 측정</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
@@ -182,6 +184,15 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                 </TableCell>
                 <TableCell className="text-right">
                   <ChangeIndicator change={keyword.change} />
+                </TableCell>
+                <TableCell className="text-right">
+                  {keyword.searchVolume !== null && keyword.searchVolume !== undefined ? (
+                    <span className="text-sm font-medium">
+                      {keyword.searchVolume.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>

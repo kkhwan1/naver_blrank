@@ -31,6 +31,7 @@ interface KeywordResponse {
   smartblockStatus: string;
   smartblockCategories: SmartblockCategory[] | null;
   lastMeasured: string | null;
+  searchVolume: number | null;
   createdAt: string;
   isActive: boolean;
 }
@@ -176,6 +177,7 @@ export default function Dashboard() {
     lastMeasured: formatLastMeasured(k.lastMeasured),
     targetUrl: k.targetUrl,
     status: mapStatusToKeywordStatus(k.smartblockStatus, k.rank),
+    searchVolume: k.searchVolume,
     smartblockCategories: k.smartblockCategories,
   }));
 
