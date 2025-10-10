@@ -40,9 +40,11 @@ export const measurements = pgTable("measurements", {
   keywordId: integer("keyword_id").notNull().references(() => keywords.id, { onDelete: "cascade" }),
   measuredAt: timestamp("measured_at", { withTimezone: true }).notNull().defaultNow(),
   rankSmartblock: integer("rank_smartblock"),
-  smartblockStatus: text("smartblock_status").notNull(),
+  smartblockStatus: text("smartblock_status").notNull(), // 'OK', 'NOT_IN_BLOCK', 'BLOCK_MISSING', 'RANKED_BUT_HIDDEN', 'ERROR'
   smartblockConfidence: decimal("smartblock_confidence", { precision: 3, scale: 2 }),
   smartblockDetails: text("smartblock_details"),
+  isVisibleInSearch: boolean("is_visible_in_search"), // Phase 1: 통합검색 실제 노출 여부
+  hiddenReason: text("hidden_reason"), // Phase 1: 숨겨진 이유 ('css_hidden', 'collapsed', 'tab_hidden', etc.)
   blogTabRank: integer("blog_tab_rank"),
   searchVolumeAvg: decimal("search_volume_avg", { precision: 10, scale: 2 }),
   durationMs: integer("duration_ms"),
