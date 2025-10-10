@@ -10,23 +10,32 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface AddKeywordDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit?: (data: { keyword: string; targetUrl: string }) => void;
+  onSubmit?: (data: { keyword: string; targetUrl: string; measurementInterval: string }) => void;
 }
 
 export default function AddKeywordDialog({ open, onOpenChange, onSubmit }: AddKeywordDialogProps) {
   const [keyword, setKeyword] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
+  const [measurementInterval, setMeasurementInterval] = useState('24h');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Adding keyword:', { keyword, targetUrl });
-    onSubmit?.({ keyword, targetUrl });
+    console.log('Adding keyword:', { keyword, targetUrl, measurementInterval });
+    onSubmit?.({ keyword, targetUrl, measurementInterval });
     setKeyword('');
     setTargetUrl('');
+    setMeasurementInterval('24h');
     onOpenChange(false);
   };
 
@@ -64,6 +73,23 @@ export default function AddKeywordDialog({ open, onOpenChange, onSubmit }: AddKe
               />
               <p className="text-xs text-muted-foreground">
                 네이버 블로그 포스트의 전체 URL을 입력하세요.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="interval">측정 주기</Label>
+              <Select value={measurementInterval} onValueChange={setMeasurementInterval}>
+                <SelectTrigger id="interval" data-testid="select-interval">
+                  <SelectValue placeholder="측정 주기 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">1시간마다</SelectItem>
+                  <SelectItem value="6h">6시간마다</SelectItem>
+                  <SelectItem value="12h">12시간마다</SelectItem>
+                  <SelectItem value="24h">24시간마다</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                자동 측정 주기를 설정하세요.
               </p>
             </div>
           </div>

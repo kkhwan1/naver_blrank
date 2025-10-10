@@ -32,6 +32,7 @@ interface KeywordResponse {
   smartblockCategories: SmartblockCategory[] | null;
   lastMeasured: string | null;
   searchVolume: number | null;
+  measurementInterval: string;
   createdAt: string;
   isActive: boolean;
 }
@@ -74,7 +75,7 @@ export default function Dashboard() {
   });
 
   const addKeywordMutation = useMutation({
-    mutationFn: async (data: { keyword: string; targetUrl: string }) => {
+    mutationFn: async (data: { keyword: string; targetUrl: string; measurementInterval: string }) => {
       return apiRequest('POST', '/api/keywords', data);
     },
     onSuccess: () => {
@@ -140,7 +141,7 @@ export default function Dashboard() {
     },
   });
 
-  const handleAddKeyword = (data: { keyword: string; targetUrl: string }) => {
+  const handleAddKeyword = (data: { keyword: string; targetUrl: string; measurementInterval: string }) => {
     addKeywordMutation.mutate(data);
   };
 
@@ -179,6 +180,7 @@ export default function Dashboard() {
     status: mapStatusToKeywordStatus(k.smartblockStatus, k.rank),
     searchVolume: k.searchVolume,
     smartblockCategories: k.smartblockCategories,
+    measurementInterval: k.measurementInterval,
   }));
 
   const stats = {

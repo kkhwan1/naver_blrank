@@ -30,6 +30,7 @@ export const keywords = pgTable("keywords", {
   keyword: text("keyword").notNull(),
   targetUrl: text("target_url").notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  measurementInterval: text("measurement_interval").notNull().default("24h"), // 1h, 6h, 12h, 24h
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -57,6 +58,7 @@ export const insertKeywordSchema = createInsertSchema(keywords).omit({
 }).extend({
   keyword: z.string().min(1, "키워드를 입력해주세요"),
   targetUrl: z.string().url("올바른 URL을 입력해주세요"),
+  measurementInterval: z.enum(["1h", "6h", "12h", "24h"]).default("24h"),
 });
 
 export const insertMeasurementSchema = createInsertSchema(measurements).omit({

@@ -231,6 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? new Date(measurement.measuredAt).toISOString() 
             : null,
           searchVolume,
+          measurementInterval: keyword.measurementInterval || '24h',
           createdAt: keyword.createdAt,
           isActive: keyword.isActive,
         };

@@ -47,6 +47,7 @@ export interface KeywordData {
   status: 'rank1' | 'rank2-3' | 'out' | 'error';
   searchVolume?: number | null;
   smartblockCategories?: SmartblockCategory[] | null;
+  measurementInterval?: string;
 }
 
 interface KeywordTableProps {
@@ -114,6 +115,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
               <TableHead className="text-right">현재 순위</TableHead>
               <TableHead className="text-right">변동</TableHead>
               <TableHead className="text-right">월간 검색량</TableHead>
+              <TableHead>측정 주기</TableHead>
               <TableHead>마지막 측정</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
@@ -193,6 +195,15 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-xs">
+                    {keyword.measurementInterval === '1h' && '1시간'}
+                    {keyword.measurementInterval === '6h' && '6시간'}
+                    {keyword.measurementInterval === '12h' && '12시간'}
+                    {keyword.measurementInterval === '24h' && '24시간'}
+                    {!keyword.measurementInterval && '24시간'}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>
