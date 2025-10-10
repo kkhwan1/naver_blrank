@@ -69,6 +69,7 @@ export default function Dashboard() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(null);
   const [selectedKeywordName, setSelectedKeywordName] = useState<string>('');
+  const [selectedTargetUrl, setSelectedTargetUrl] = useState<string>('');
 
   const { data: keywords = [], isLoading } = useQuery<KeywordResponse[]>({
     queryKey: ['/api/keywords'],
@@ -150,6 +151,7 @@ export default function Dashboard() {
     if (keyword) {
       setSelectedKeywordId(id);
       setSelectedKeywordName(keyword.keyword);
+      setSelectedTargetUrl(keyword.targetUrl);
     }
     measureMutation.mutate({ id, method });
   };
@@ -159,6 +161,7 @@ export default function Dashboard() {
     if (keyword) {
       setSelectedKeywordId(id);
       setSelectedKeywordName(keyword.keyword);
+      setSelectedTargetUrl(keyword.targetUrl);
       setDetailDialogOpen(true);
     }
   };
@@ -267,6 +270,7 @@ export default function Dashboard() {
         onOpenChange={setDetailDialogOpen}
         keywordId={selectedKeywordId}
         keyword={selectedKeywordName}
+        targetUrl={selectedTargetUrl}
       />
     </div>
   );

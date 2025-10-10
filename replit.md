@@ -26,6 +26,13 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **October 10, 2025**:
+- **Automated Measurement Scheduling System**:
+  - Implemented node-cron based scheduler for automatic measurements
+  - Four cron jobs: 1h (hourly), 6h (every 6 hours), 12h (twice daily), 24h (daily at midnight)
+  - Scheduler lifecycle tied to server startup/shutdown with graceful termination
+  - Reuses existing measurement logic (HTML parser + SmartBlockParser + Naver Search Ad API)
+  - Admin-only API endpoints: POST /api/scheduler/trigger/:interval, GET /api/scheduler/status
+  - Proper error handling and measurement persistence even on failures
 - **Measurement Interval Feature**: Implemented configurable auto-measurement intervals
   - Database schema extended with `measurementInterval` field (1h, 6h, 12h, 24h)
   - UI updated: AddKeywordDialog includes interval selection dropdown
@@ -116,13 +123,18 @@ Preferred communication style: Simple, everyday language.
 - SerpAPI client for alternative measurement method
 - PostgreSQL storage with Drizzle ORM
 - Batched query optimization to prevent N+1 queries
+- **Automated Scheduling System**:
+  - node-cron based measurement scheduler with 1h/6h/12h/24h intervals
+  - Graceful lifecycle management (start on server boot, stop on SIGTERM)
+  - Admin-only manual trigger and status endpoints
+  - Reuses measurement logic for consistency
 
 **Planned Architecture** (from technical design docs):
-- Job scheduling with BullMQ + Redis for automated measurements
-- Worker pool for measurement processing
+- Worker pool for concurrent measurement processing
 - Naver Search API for blog tab rankings
-- Real-time updates for rank changes
-- Frontend dashboard with trend visualization
+- Real-time updates for rank changes via WebSockets
+- Frontend dashboard with trend visualization charts
+- Migration to BullMQ + Redis for distributed job queue (optional, if scaling needed)
 
 ### Data Models
 

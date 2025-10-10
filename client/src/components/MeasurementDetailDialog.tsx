@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import KeywordStatsTab from './KeywordStatsTab';
 import KeywordBlogsTab from './KeywordBlogsTab';
+import { RankingChart } from './RankingChart';
 
 interface SmartblockCategory {
   categoryName: string;
@@ -45,13 +46,15 @@ interface MeasurementDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   keywordId: string | null;
   keyword: string;
+  targetUrl: string;
 }
 
 export default function MeasurementDetailDialog({ 
   open, 
   onOpenChange, 
   keywordId,
-  keyword 
+  keyword,
+  targetUrl 
 }: MeasurementDetailDialogProps) {
   const { data: measurements = [], isLoading } = useQuery<Measurement[]>({
     queryKey: ['/api/measurements', keywordId],
@@ -114,8 +117,9 @@ export default function MeasurementDetailDialog({
         </DialogHeader>
 
         <Tabs defaultValue="measurement" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="measurement" data-testid="tab-measurement">측정 결과</TabsTrigger>
+            <TabsTrigger value="chart" data-testid="tab-chart">순위 변동</TabsTrigger>
             <TabsTrigger value="stats" data-testid="tab-stats">키워드 통계</TabsTrigger>
             <TabsTrigger value="blogs" data-testid="tab-blogs">블로그 검색</TabsTrigger>
           </TabsList>
@@ -256,6 +260,20 @@ export default function MeasurementDetailDialog({
                   </Card>
                 )}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="chart" className="mt-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <RankingChart 
+                measurements={measurements} 
+                keyword={keyword} 
+                targetUrl={targetUrl}
+              />
             )}
           </TabsContent>
 
