@@ -26,6 +26,14 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **October 10, 2025**:
+- **Keyword Table Pagination**:
+  - Implemented pagination with 14 items per page
+  - Previous/Next navigation with page numbers
+  - Ellipsis (...) for large page counts
+  - Filter change resets to page 1
+  - Synchronous page clamping prevents rendering issues when dataset shrinks
+  - Safe handling of keyword deletion/filtering edge cases
+  - Smooth scroll to top on page change
 - **Ranking Visualization Chart**:
   - Implemented RankingChart component using Recharts
   - Line chart with reversed Y-axis (lower rank appears higher)
