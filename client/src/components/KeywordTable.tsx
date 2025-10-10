@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -20,6 +20,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
 import StatusDot from './StatusDot';
 import RankBadge from './RankBadge';
 import ChangeIndicator from './ChangeIndicator';
@@ -60,6 +69,8 @@ interface KeywordTableProps {
 
 export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDelete, filterBy = 'all' }: KeywordTableProps) {
   const [selectedFilter, setSelectedFilter] = useState(filterBy);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 14;
 
   const filteredKeywords = keywords.filter((keyword) => {
     if (selectedFilter === 'all') return true;
@@ -69,41 +80,70 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
     return true;
   });
 
+  const totalPages = Math.ceil(filteredKeywords.length / itemsPerPage);
+  const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedKeywords = filteredKeywords.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    } else if (totalPages === 0 && currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [filteredKeywords.length, totalPages, currentPage]);
+
+  const handleFilterChange = (filter: 'all' | 'up' | 'down' | 'stable') => {
+    setSelectedFilter(filter);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button
-          variant={selectedFilter === 'all' ? 'default' : 'secondary'}
-          size="sm"
-          onClick={() => setSelectedFilter('all')}
-          data-testid="filter-all"
-        >
-          전체
-        </Button>
-        <Button
-          variant={selectedFilter === 'up' ? 'default' : 'secondary'}
-          size="sm"
-          onClick={() => setSelectedFilter('up')}
-          data-testid="filter-up"
-        >
-          상승
-        </Button>
-        <Button
-          variant={selectedFilter === 'down' ? 'default' : 'secondary'}
-          size="sm"
-          onClick={() => setSelectedFilter('down')}
-          data-testid="filter-down"
-        >
-          하락
-        </Button>
-        <Button
-          variant={selectedFilter === 'stable' ? 'default' : 'secondary'}
-          size="sm"
-          onClick={() => setSelectedFilter('stable')}
-          data-testid="filter-stable"
-        >
-          유지
-        </Button>
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          <Button
+            variant={selectedFilter === 'all' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleFilterChange('all')}
+            data-testid="filter-all"
+          >
+            전체
+          </Button>
+          <Button
+            variant={selectedFilter === 'up' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleFilterChange('up')}
+            data-testid="filter-up"
+          >
+            상승
+          </Button>
+          <Button
+            variant={selectedFilter === 'down' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleFilterChange('down')}
+            data-testid="filter-down"
+          >
+            하락
+          </Button>
+          <Button
+            variant={selectedFilter === 'stable' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleFilterChange('stable')}
+            data-testid="filter-stable"
+          >
+            유지
+          </Button>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          총 {filteredKeywords.length}개 키워드
+        </div>
       </div>
 
       <div className="border rounded-lg">
@@ -121,7 +161,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredKeywords.map((keyword) => (
+            {paginatedKeywords.map((keyword) => (
               <TableRow
                 key={keyword.id}
                 className="cursor-pointer hover-elevate"
@@ -257,16 +297,77 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                 </TableCell>
               </TableRow>
             ))}
-            {filteredKeywords.length === 0 && (
+            {paginatedKeywords.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  키워드가 없습니다
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  {filteredKeywords.length === 0 ? '키워드가 없습니다' : '해당 필터에 맞는 키워드가 없습니다'}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      {totalPages > 1 && (
+        <Pagination data-testid="pagination">
+          <PaginationContent>
+            <PaginationItem>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(safeCurrentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                data-testid="pagination-previous"
+              >
+                <PaginationPrevious className="h-auto w-auto p-0" />
+              </Button>
+            </PaginationItem>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+              if (
+                page === 1 ||
+                page === totalPages ||
+                (page >= safeCurrentPage - 1 && page <= safeCurrentPage + 1)
+              ) {
+                return (
+                  <PaginationItem key={page}>
+                    <Button
+                      variant={safeCurrentPage === page ? 'outline' : 'ghost'}
+                      size="icon"
+                      onClick={() => handlePageChange(page)}
+                      data-testid={`pagination-page-${page}`}
+                    >
+                      {page}
+                    </Button>
+                  </PaginationItem>
+                );
+              } else if (
+                page === safeCurrentPage - 2 ||
+                page === safeCurrentPage + 2
+              ) {
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                );
+              }
+              return null;
+            })}
+
+            <PaginationItem>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(safeCurrentPage + 1)}
+                disabled={safeCurrentPage >= totalPages}
+                data-testid="pagination-next"
+              >
+                <PaginationNext className="h-auto w-auto p-0" />
+              </Button>
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </div>
   );
 }
