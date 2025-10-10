@@ -1,5 +1,5 @@
 interface StatusDotProps {
-  status: 'rank1' | 'rank2-3' | 'out' | 'error';
+  status: 'rank1' | 'rank2-3' | 'out' | 'error' | 'hidden';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -15,6 +15,7 @@ export default function StatusDot({ status, size = 'md' }: StatusDotProps) {
     'rank2-3': 'bg-warning',
     'out': 'bg-muted-foreground/40',
     'error': 'bg-destructive',
+    'hidden': 'bg-destructive animate-pulse', // Phase 1: 통합검색 이탈 - 빨간색 + 애니메이션
   };
 
   return (

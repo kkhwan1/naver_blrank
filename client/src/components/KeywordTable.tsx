@@ -53,7 +53,7 @@ export interface KeywordData {
   change: number;
   lastMeasured: string;
   targetUrl: string;
-  status: 'rank1' | 'rank2-3' | 'out' | 'error';
+  status: 'rank1' | 'rank2-3' | 'out' | 'error' | 'hidden'; // Phase 1: 'hidden' = 통합검색 이탈
   searchVolume?: number | null;
   smartblockCategories?: SmartblockCategory[] | null;
   measurementInterval?: string;

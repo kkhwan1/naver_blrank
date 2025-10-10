@@ -39,6 +39,7 @@ interface KeywordResponse {
 
 function mapStatusToKeywordStatus(status: string, rank: number | null): KeywordData['status'] {
   if (status === 'ERROR') return 'error';
+  if (status === 'RANKED_BUT_HIDDEN') return 'hidden'; // Phase 1: 통합검색 이탈 감지
   if (rank === 1) return 'rank1';
   if (rank === 2 || rank === 3) return 'rank2-3';
   return 'out';
