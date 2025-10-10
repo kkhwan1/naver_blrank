@@ -8,7 +8,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import KeywordStatsTab from './KeywordStatsTab';
@@ -36,6 +36,8 @@ interface Measurement {
   smartblockStatus: string;
   smartblockConfidence: string;
   smartblockDetails: string | null;
+  isVisibleInSearch?: boolean; // Phase 1: 통합검색 실제 노출 여부
+  hiddenReason?: string; // Phase 1: 숨겨진 이유
   durationMs: number;
   method: string;
   errorMessage?: string;
@@ -99,6 +101,7 @@ export default function MeasurementDetailDialog({
       'OK': { label: '정상', variant: 'default' },
       'NOT_IN_BLOCK': { label: '스마트블록 없음', variant: 'secondary' },
       'BLOCK_MISSING': { label: '블록 누락', variant: 'outline' },
+      'RANKED_BUT_HIDDEN': { label: '통합검색 이탈', variant: 'destructive' }, // Phase 1
       'ERROR': { label: '오류', variant: 'destructive' },
     };
     
@@ -135,6 +138,30 @@ export default function MeasurementDetailDialog({
               </div>
             ) : (
               <div className="space-y-4">
+                {/* Phase 1: 통합검색 이탈 경고 배너 */}
+                {latestMeasurement.smartblockStatus === 'RANKED_BUT_HIDDEN' && (
+                  <Card className="p-4 bg-destructive/10 border-destructive/20" data-testid="alert-ranked-but-hidden">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-destructive mt-0.5" />
+                      <div className="flex-1 space-y-1">
+                        <h4 className="font-semibold text-destructive">통합검색 이탈 감지</h4>
+                        <p className="text-sm text-destructive/90">
+                          스마트블록에서 {latestMeasurement.rankSmartblock}위로 표시되지만, 실제 검색 결과에서는 숨겨져 있습니다.
+                        </p>
+                        {latestMeasurement.hiddenReason && (
+                          <p className="text-xs text-muted-foreground">
+                            이유: {latestMeasurement.hiddenReason === 'display_none' && 'CSS display:none 속성'}
+                            {latestMeasurement.hiddenReason === 'visibility_hidden' && 'CSS visibility:hidden 속성'}
+                            {latestMeasurement.hiddenReason === 'opacity_zero' && 'CSS opacity:0 속성'}
+                            {latestMeasurement.hiddenReason === 'css_class_hidden' && 'CSS hidden 클래스'}
+                            {!['display_none', 'visibility_hidden', 'opacity_zero', 'css_class_hidden'].includes(latestMeasurement.hiddenReason) && latestMeasurement.hiddenReason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
                 <Card className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold">기본 정보</h3>
