@@ -32,10 +32,21 @@ export class NaverSearchAdClient {
   private baseUrl: string;
 
   constructor() {
-    this.customerId = process.env.NAVER_SEARCHAD_CUSTOMER_ID || '';
-    this.accessLicense = process.env.NAVER_SEARCHAD_ACCESS_LICENSE || '';
-    this.secretKey = process.env.NAVER_SEARCHAD_SECRET_KEY || '';
+    this.customerId = this.extractValue(process.env.NAVER_SEARCHAD_CUSTOMER_ID || '');
+    this.accessLicense = this.extractValue(process.env.NAVER_SEARCHAD_ACCESS_LICENSE || '');
+    this.secretKey = this.extractValue(process.env.NAVER_SEARCHAD_SECRET_KEY || '');
     this.baseUrl = 'https://api.searchad.naver.com';
+  }
+
+  private extractValue(envVar: string): string {
+    const trimmed = envVar.trim();
+    const parts = trimmed.split('=');
+    
+    if (parts.length > 1 && parts[0].trim().startsWith('NAVER_SEARCHAD_')) {
+      return parts.slice(1).join('=').trim();
+    }
+    
+    return trimmed;
   }
 
   private validateCredentials(): void {
