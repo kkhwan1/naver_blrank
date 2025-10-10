@@ -4,6 +4,8 @@ import connectPgSimple from "connect-pg-simple";
 import passport from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storage } from "./storage";
+import { MeasurementScheduler } from "./scheduler";
 
 const app = express();
 app.use(express.json());
@@ -81,6 +83,23 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // Initialize and start the measurement scheduler
+  const scheduler = new MeasurementScheduler(storage);
+  await scheduler.start();
+  
+  // Make scheduler available to routes via app.locals
+  app.locals.scheduler = scheduler;
+  
+  // Graceful shutdown handler
+  process.on('SIGTERM', () => {
+    log('SIGTERM signal received: closing HTTP server and scheduler');
+    scheduler.stop();
+    server.close(() => {
+      log('HTTP server closed');
+      process.exit(0);
+    });
+  });
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.

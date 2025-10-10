@@ -25,6 +25,23 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**October 10, 2025**:
+- **Measurement Interval Feature**: Implemented configurable auto-measurement intervals
+  - Database schema extended with `measurementInterval` field (1h, 6h, 12h, 24h)
+  - UI updated: AddKeywordDialog includes interval selection dropdown
+  - KeywordTable displays measurement interval with color-coded badges
+  - Full data flow: UI → API → Database → UI verified and working
+  - Default interval: 24h (can be customized per keyword)
+- **Naver Search Ad API Integration**:
+  - NaverSearchAdClient implemented with proper credential extraction
+  - Fixed extractValue method to handle base64 credentials with "=" characters
+  - Keyword search volume statistics display (Note: API credentials need update for production)
+  - Related keywords feature functional
+- **Smart Block Measurement Stability**:
+  - Comprehensive e2e testing completed: rank 1-3 detection verified
+  - NOT_IN_BLOCK status handling confirmed
+  - Multiple smart block categories detected accurately
+
 **October 6, 2025**:
 - Implemented PostgreSQL database schema with keywords and measurements tables
 - Built keyword management API endpoints (POST/GET/DELETE /api/keywords)
@@ -114,6 +131,7 @@ Preferred communication style: Simple, everyday language.
   - id (serial primary key)
   - keyword (text): Search keyword to track
   - targetUrl (text): Blog post URL to monitor
+  - measurementInterval (text): Auto-measurement interval (1h, 6h, 12h, 24h) - default 24h
   - isActive (boolean): Tracking status
   - createdAt, updatedAt (timestamps)
   

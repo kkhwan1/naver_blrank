@@ -451,6 +451,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual trigger for scheduled measurements (admin only, for testing)
+  app.post('/api/scheduler/trigger/:interval', requireAdmin, async (req, res) => {
+    try {
+      const { interval } = req.params;
+      const validIntervals = ['1h', '6h', '12h', '24h'];
+      
+      if (!validIntervals.includes(interval)) {
+        return res.status(400).json({ 
+          error: `Invalid interval. Must be one of: ${validIntervals.join(', ')}` 
+        });
+      }
+
+      const scheduler = req.app.locals.scheduler;
+      if (!scheduler) {
+        return res.status(500).json({ error: 'Scheduler not initialized' });
+      }
+
+      // Trigger measurements asynchronously
+      scheduler.triggerInterval(interval).catch((error: Error) => {
+        console.error(`Error in manual trigger for ${interval}:`, error);
+      });
+
+      res.json({ 
+        message: `Triggering measurements for ${interval} interval`,
+        interval 
+      });
+    } catch (error) {
+      console.error('Scheduler trigger error:', error);
+      res.status(500).json({ error: '스케줄러 트리거 중 오류가 발생했습니다' });
+    }
+  });
+
+  // Get scheduler status (admin only)
+  app.get('/api/scheduler/status', requireAdmin, async (req, res) => {
+    try {
+      const scheduler = req.app.locals.scheduler;
+      if (!scheduler) {
+        return res.status(500).json({ error: 'Scheduler not initialized' });
+      }
+
+      const status = scheduler.getStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Scheduler status error:', error);
+      res.status(500).json({ error: '스케줄러 상태 조회 중 오류가 발생했습니다' });
+    }
+  });
+
   app.get('/api/measurements/:keywordId', requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
