@@ -33,6 +33,8 @@ interface KeywordResponse {
   lastMeasured: string | null;
   searchVolume: number | null;
   measurementInterval: string;
+  documentCount: number | null;
+  competitionRate: string | null;
   createdAt: string;
   isActive: boolean;
 }
@@ -143,6 +145,27 @@ export default function Dashboard() {
     },
   });
 
+  const updateCompetitionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('POST', `/api/keywords/${id}/update-competition`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/keywords'] });
+      toast({
+        title: '경쟁률 업데이트 완료',
+        description: `문서수: ${data.documentCount?.toLocaleString() || 'N/A'}, 경쟁률: ${data.competitionRate ? parseFloat(data.competitionRate).toFixed(2) : 'N/A'}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: '경쟁률 업데이트 실패',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleAddKeyword = (data: { keyword: string; targetUrl: string; measurementInterval: string }) => {
     addKeywordMutation.mutate(data);
   };
@@ -174,6 +197,18 @@ export default function Dashboard() {
     }
   };
 
+  const handleRemeasure = (id: string) => {
+    // 재측정: 순위 측정 + 경쟁률 업데이트
+    const keyword = keywords.find(k => k.id === id);
+    if (keyword) {
+      setSelectedKeywordId(id);
+      setSelectedKeywordName(keyword.keyword);
+      setSelectedTargetUrl(keyword.targetUrl);
+      measureMutation.mutate({ id, method: 'html-parser' });
+      updateCompetitionMutation.mutate(id);
+    }
+  };
+
   const keywordsData: KeywordData[] = keywords.map((k) => ({
     id: k.id,
     keyword: k.keyword,
@@ -185,6 +220,8 @@ export default function Dashboard() {
     searchVolume: k.searchVolume,
     smartblockCategories: k.smartblockCategories,
     measurementInterval: k.measurementInterval,
+    documentCount: k.documentCount,
+    competitionRate: k.competitionRate,
   }));
 
   const stats = {
@@ -255,6 +292,7 @@ export default function Dashboard() {
               }}
               onViewDetails={handleViewDetails}
               onDelete={handleDeleteKeyword}
+              onRemeasure={handleRemeasure}
             />
           </div>
         </div>

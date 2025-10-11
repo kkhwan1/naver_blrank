@@ -57,6 +57,8 @@ export interface KeywordData {
   searchVolume?: number | null;
   smartblockCategories?: SmartblockCategory[] | null;
   measurementInterval?: string;
+  documentCount?: number | null;
+  competitionRate?: string | null;
 }
 
 interface KeywordTableProps {
@@ -64,10 +66,11 @@ interface KeywordTableProps {
   onRowClick?: (id: string) => void;
   onViewDetails?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onRemeasure?: (id: string) => void;
   filterBy?: 'all' | 'up' | 'down' | 'stable';
 }
 
-export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDelete, filterBy = 'all' }: KeywordTableProps) {
+export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDelete, onRemeasure, filterBy = 'all' }: KeywordTableProps) {
   const [selectedFilter, setSelectedFilter] = useState(filterBy);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 14;
@@ -155,6 +158,8 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
               <TableHead className="text-right">현재 순위</TableHead>
               <TableHead className="text-right">변동</TableHead>
               <TableHead className="text-right">월간 검색량</TableHead>
+              <TableHead className="text-right">문서수</TableHead>
+              <TableHead className="text-right">경쟁률</TableHead>
               <TableHead>측정 주기</TableHead>
               <TableHead>마지막 측정</TableHead>
               <TableHead className="w-12"></TableHead>
@@ -188,7 +193,16 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <RankBadge rank={keyword.rank} />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemeasure?.(keyword.id);
+                      }}
+                      className="hover-elevate active-elevate-2 rounded-md transition-all"
+                      data-testid={`rank-remeasure-${keyword.id}`}
+                    >
+                      <RankBadge rank={keyword.rank} />
+                    </button>
                     {keyword.smartblockCategories && keyword.smartblockCategories.length > 0 && (
                       <Popover>
                         <PopoverTrigger asChild>
@@ -236,14 +250,41 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
                 </TableCell>
+                <TableCell className="text-right">
+                  {keyword.documentCount !== null && keyword.documentCount !== undefined ? (
+                    <span className="text-sm font-medium">
+                      {keyword.documentCount.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  {keyword.competitionRate ? (
+                    <span className="text-sm font-medium">
+                      {parseFloat(keyword.competitionRate).toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
+                </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-xs">
-                    {keyword.measurementInterval === '1h' && '1시간'}
-                    {keyword.measurementInterval === '6h' && '6시간'}
-                    {keyword.measurementInterval === '12h' && '12시간'}
-                    {keyword.measurementInterval === '24h' && '24시간'}
-                    {!keyword.measurementInterval && '24시간'}
-                  </Badge>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemeasure?.(keyword.id);
+                    }}
+                    className="hover-elevate active-elevate-2 rounded-md transition-all"
+                    data-testid={`interval-remeasure-${keyword.id}`}
+                  >
+                    <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate">
+                      {keyword.measurementInterval === '1h' && '1시간'}
+                      {keyword.measurementInterval === '6h' && '6시간'}
+                      {keyword.measurementInterval === '12h' && '12시간'}
+                      {keyword.measurementInterval === '24h' && '24시간'}
+                      {!keyword.measurementInterval && '24시간'}
+                    </Badge>
+                  </button>
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>
@@ -299,7 +340,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
             ))}
             {paginatedKeywords.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   {filteredKeywords.length === 0 ? '키워드가 없습니다' : '해당 필터에 맞는 키워드가 없습니다'}
                 </TableCell>
               </TableRow>

@@ -261,6 +261,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : null,
           searchVolume,
           measurementInterval: keyword.measurementInterval || '24h',
+          documentCount: keyword.documentCount,
+          competitionRate: keyword.competitionRate,
           createdAt: keyword.createdAt,
           isActive: keyword.isActive,
         };
