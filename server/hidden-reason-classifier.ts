@@ -56,7 +56,7 @@ export class HiddenReasonClassifier {
    */
   private classifyDisplayNone(): HiddenReasonClassification {
     return {
-      category: '품질_필터',
+      category: '품질 필터',
       detail: '네이버 품질 관리 시스템에 의해 일시적으로 노출이 제한되었습니다. 최근 유사한 콘텐츠가 많거나, 품질 점검이 진행 중일 수 있습니다.',
       detectionMethod: 'css_display_check',
       recoveryEstimate: '24-48시간',
@@ -71,7 +71,7 @@ export class HiddenReasonClassifier {
    */
   private classifyVisibilityHidden(): HiddenReasonClassification {
     return {
-      category: '일시적_검토',
+      category: '일시적 검토',
       detail: '네이버에서 일시적으로 검토 중입니다. 요소는 존재하지만 시각적으로 숨겨진 상태입니다.',
       detectionMethod: 'css_visibility_check',
       recoveryEstimate: '12-24시간',
@@ -86,7 +86,7 @@ export class HiddenReasonClassifier {
    */
   private classifyOpacityZero(): HiddenReasonClassification {
     return {
-      category: '스팸_의심',
+      category: '스팸 의심',
       detail: '스팸 또는 저품질 콘텐츠로 의심되어 투명도 처리되었습니다. 네이버의 자동 필터링 시스템이 작동한 것으로 보입니다.',
       detectionMethod: 'css_opacity_check',
       recoveryEstimate: '48-72시간',
@@ -101,7 +101,7 @@ export class HiddenReasonClassifier {
    */
   private classifyCssClassHidden(): HiddenReasonClassification {
     return {
-      category: '광고_우선노출',
+      category: '정책 위반',
       detail: '광고 또는 프로모션 콘텐츠가 우선 노출되어 일시적으로 가려졌습니다. 특정 시간대에만 발생할 수 있습니다.',
       detectionMethod: 'css_class_check',
       recoveryEstimate: '1-6시간',
@@ -115,7 +115,7 @@ export class HiddenReasonClassifier {
    */
   private classifyUnknown(technicalReason: string): HiddenReasonClassification {
     return {
-      category: '알_수_없음',
+      category: '알 수 없음',
       detail: `알 수 없는 이유로 숨겨졌습니다 (감지된 원인: ${technicalReason}). 추가 분석이 필요합니다.`,
       detectionMethod: 'unknown',
       recoveryEstimate: '알 수 없음',

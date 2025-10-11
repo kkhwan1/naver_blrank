@@ -8,7 +8,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { ExternalLink, AlertTriangle } from 'lucide-react';
+import { ExternalLink, AlertTriangle, Shield, Ban, Clock, FileWarning, Info, CheckCircle2, XCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import KeywordStatsTab from './KeywordStatsTab';
@@ -37,7 +37,11 @@ interface Measurement {
   smartblockConfidence: string;
   smartblockDetails: string | null;
   isVisibleInSearch?: boolean; // Phase 1: 통합검색 실제 노출 여부
-  hiddenReason?: string; // Phase 1: 숨겨진 이유
+  hiddenReason?: string; // Phase 1: 숨겨진 기술적 이유
+  hiddenReasonCategory?: string; // Phase 2: 비즈니스 의미 카테고리
+  hiddenReasonDetail?: string; // Phase 2: 상세 설명
+  detectionMethod?: string; // Phase 2: 감지 방법
+  recoveryEstimate?: string; // Phase 2: 복구 예상 시간
   durationMs: number;
   method: string;
   errorMessage?: string;
@@ -138,29 +142,101 @@ export default function MeasurementDetailDialog({
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Phase 1: 통합검색 이탈 경고 배너 */}
-                {latestMeasurement.smartblockStatus === 'RANKED_BUT_HIDDEN' && (
-                  <Card className="p-4 bg-destructive/10 border-destructive/20" data-testid="alert-ranked-but-hidden">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-destructive mt-0.5" />
-                      <div className="flex-1 space-y-1">
-                        <h4 className="font-semibold text-destructive">통합검색 이탈 감지</h4>
-                        <p className="text-sm text-destructive/90">
-                          스마트블록에서 {latestMeasurement.rankSmartblock}위로 표시되지만, 실제 검색 결과에서는 숨겨져 있습니다.
-                        </p>
-                        {latestMeasurement.hiddenReason && (
-                          <p className="text-xs text-muted-foreground">
-                            이유: {latestMeasurement.hiddenReason === 'display_none' && 'CSS display:none 속성'}
-                            {latestMeasurement.hiddenReason === 'visibility_hidden' && 'CSS visibility:hidden 속성'}
-                            {latestMeasurement.hiddenReason === 'opacity_zero' && 'CSS opacity:0 속성'}
-                            {latestMeasurement.hiddenReason === 'css_class_hidden' && 'CSS hidden 클래스'}
-                            {!['display_none', 'visibility_hidden', 'opacity_zero', 'css_class_hidden'].includes(latestMeasurement.hiddenReason) && latestMeasurement.hiddenReason}
+                {/* Phase 2: 개선된 통합검색 이탈 경고 배너 */}
+                {latestMeasurement.smartblockStatus === 'RANKED_BUT_HIDDEN' && (() => {
+                  const category = latestMeasurement.hiddenReasonCategory || '알 수 없음';
+                  
+                  const categoryConfig: Record<string, { 
+                    icon: typeof AlertTriangle, 
+                    color: string, 
+                    bgColor: string,
+                    actionGuide: string 
+                  }> = {
+                    '품질 필터': { 
+                      icon: Shield, 
+                      color: 'text-amber-600 dark:text-amber-400',
+                      bgColor: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
+                      actionGuide: '콘텐츠 품질을 개선하세요. 독창적인 정보 추가, 사용자 경험 개선, 정확한 정보 제공이 필요합니다.'
+                    },
+                    '스팸 의심': { 
+                      icon: Ban, 
+                      color: 'text-red-600 dark:text-red-400',
+                      bgColor: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
+                      actionGuide: '스팸으로 분류되었습니다. 과도한 키워드 반복, 자동 생성 콘텐츠 의심 등을 점검하고 수정하세요.'
+                    },
+                    '일시적 검토': { 
+                      icon: Clock, 
+                      color: 'text-blue-600 dark:text-blue-400',
+                      bgColor: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800',
+                      actionGuide: '일시적인 검토 상태입니다. 24-48시간 후 자동으로 복구될 수 있습니다. 기다려 보세요.'
+                    },
+                    '정책 위반': { 
+                      icon: FileWarning, 
+                      color: 'text-red-600 dark:text-red-400',
+                      bgColor: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
+                      actionGuide: '네이버 정책 위반 가능성이 있습니다. 콘텐츠를 검토하고 위반 사항을 수정하세요.'
+                    },
+                    '알 수 없음': { 
+                      icon: AlertTriangle, 
+                      color: 'text-destructive',
+                      bgColor: 'bg-destructive/10 border-destructive/20',
+                      actionGuide: '상세 원인을 파악 중입니다. 계속 모니터링하세요.'
+                    }
+                  };
+
+                  const config = categoryConfig[category] || categoryConfig['알 수 없음'];
+                  const Icon = config.icon;
+
+                  return (
+                    <Card className={`p-4 ${config.bgColor}`} data-testid="alert-ranked-but-hidden">
+                      <div className="flex items-start gap-3">
+                        <Icon className={`w-5 h-5 ${config.color} mt-0.5`} />
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h4 className={`font-semibold ${config.color}`}>통합검색 이탈 감지</h4>
+                            <Badge variant="outline" className="text-xs">
+                              {category}
+                            </Badge>
+                          </div>
+                          <p className={`text-sm ${config.color}`}>
+                            스마트블록에서 {latestMeasurement.rankSmartblock}위로 표시되지만, 실제 검색 결과에서는 숨겨져 있습니다.
                           </p>
-                        )}
+                          {latestMeasurement.hiddenReasonDetail && (
+                            <p className="text-sm text-muted-foreground">
+                              {latestMeasurement.hiddenReasonDetail}
+                            </p>
+                          )}
+                          {latestMeasurement.recoveryEstimate && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Clock className="w-4 h-4" />
+                              <span>예상 복구: {latestMeasurement.recoveryEstimate}</span>
+                            </div>
+                          )}
+                          <div className={`mt-3 p-3 rounded-md bg-background/50 border`}>
+                            <div className="flex items-start gap-2">
+                              <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium mb-1">대응 가이드</p>
+                                <p className="text-sm text-muted-foreground">{config.actionGuide}</p>
+                              </div>
+                            </div>
+                          </div>
+                          {latestMeasurement.hiddenReason && (
+                            <details className="text-xs">
+                              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                                기술 상세 정보 보기
+                              </summary>
+                              <div className="mt-2 p-2 bg-muted/30 rounded">
+                                <p>감지 방법: {latestMeasurement.detectionMethod || 'css_check'}</p>
+                                <p>기술적 원인: {latestMeasurement.hiddenReason}</p>
+                              </div>
+                            </details>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                )}
+                    </Card>
+                  );
+                })()}
 
                 <Card className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
