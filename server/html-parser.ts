@@ -183,10 +183,16 @@ export class NaverHTMLParser {
         
         if (blogUrl && !categorySeenUrls.has(blogUrl)) {
           categorySeenUrls.add(blogUrl);
-          const title = $link.text().trim() || $link.attr('aria-label') || $link.attr('title') || '';
+          let title = $link.text().trim() || $link.attr('aria-label') || $link.attr('title') || '';
+          
+          // "접기" 문구 제거
+          title = title.replace(/\s*접기\s*$/g, '').trim();
           
           // Phase 1: CSS visibility 체크
           const visibilityCheck = this.checkElementVisibility($link, $);
+          
+          // 블로그 메타정보 추출
+          const metadata = this.extractBlogMetadata($link, $);
           
           categoryBlogs.push({
             url: blogUrl,
@@ -194,6 +200,9 @@ export class NaverHTMLParser {
             position: categoryBlogs.length,
             isVisible: visibilityCheck.isVisible,
             hiddenReason: visibilityCheck.hiddenReason,
+            blogName: metadata.blogName,
+            author: metadata.author,
+            publishedDate: metadata.publishedDate,
           });
           
           if (!seenUrls.has(blogUrl)) {
@@ -204,6 +213,9 @@ export class NaverHTMLParser {
               position: blogResults.length,
               isVisible: visibilityCheck.isVisible,
               hiddenReason: visibilityCheck.hiddenReason,
+              blogName: metadata.blogName,
+              author: metadata.author,
+              publishedDate: metadata.publishedDate,
             });
           }
         }
@@ -231,10 +243,16 @@ export class NaverHTMLParser {
         
         if (blogUrl && !seenUrls.has(blogUrl)) {
           seenUrls.add(blogUrl);
-          const title = $link.text().trim() || $link.attr('aria-label') || '제목 없음';
+          let title = $link.text().trim() || $link.attr('aria-label') || '제목 없음';
+          
+          // "접기" 문구 제거
+          title = title.replace(/\s*접기\s*$/g, '').trim();
           
           // Phase 1: CSS visibility 체크
           const visibilityCheck = this.checkElementVisibility($link, $);
+          
+          // 블로그 메타정보 추출
+          const metadata = this.extractBlogMetadata($link, $);
           
           blogResults.push({
             url: blogUrl,
@@ -242,6 +260,9 @@ export class NaverHTMLParser {
             position: blogResults.length,
             isVisible: visibilityCheck.isVisible,
             hiddenReason: visibilityCheck.hiddenReason,
+            blogName: metadata.blogName,
+            author: metadata.author,
+            publishedDate: metadata.publishedDate,
           });
         }
       }
@@ -338,6 +359,92 @@ export class NaverHTMLParser {
     } catch (error) {
       return null;
     }
+  }
+
+  private extractBlogMetadata($link: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): { blogName?: string; author?: string; publishedDate?: string } {
+    const metadata: { blogName?: string; author?: string; publishedDate?: string } = {};
+    
+    try {
+      // 링크의 부모 컨테이너에서 메타정보 찾기
+      let $container = $link.closest('div, li, article');
+      let depth = 0;
+      
+      // 충분히 큰 컨테이너 찾기 (최대 5단계 위로)
+      while ($container.length > 0 && depth < 5) {
+        const containerText = $container.text().length;
+        if (containerText > 50) break;
+        $container = $container.parent();
+        depth++;
+      }
+      
+      if ($container.length === 0) {
+        $container = $link.parent();
+      }
+      
+      // 발행일 추출 (여러 패턴 시도)
+      // 패턴 1: time 태그
+      const $time = $container.find('time');
+      if ($time.length > 0) {
+        metadata.publishedDate = $time.text().trim();
+      }
+      
+      // 패턴 2: 날짜 형식 텍스트 (예: "5일 전", "2024.01.15", "1시간 전")
+      if (!metadata.publishedDate) {
+        const datePatterns = [
+          /(\d+일\s*전)/,
+          /(\d+시간\s*전)/,
+          /(\d+분\s*전)/,
+          /(\d{4}\.\d{1,2}\.\d{1,2})/,
+          /(\d{4}-\d{1,2}-\d{1,2})/,
+        ];
+        
+        const containerText = $container.text();
+        for (const pattern of datePatterns) {
+          const match = containerText.match(pattern);
+          if (match && match[1]) {
+            metadata.publishedDate = match[1].trim();
+            break;
+          }
+        }
+      }
+      
+      // 블로그명/발행자 추출
+      // 패턴 1: class에 'author', 'blogger', 'writer' 포함된 요소
+      const $author = $container.find('[class*="author"], [class*="blogger"], [class*="writer"], [class*="name"]').first();
+      if ($author.length > 0) {
+        const authorText = $author.text().trim();
+        if (authorText && authorText.length < 50 && authorText !== metadata.publishedDate) {
+          metadata.author = authorText;
+          metadata.blogName = authorText;
+        }
+      }
+      
+      // 패턴 2: 링크 근처의 작은 텍스트 요소 (보통 블로그명)
+      if (!metadata.blogName) {
+        const $nearbyText = $container.find('span, div, p').filter((i, el) => {
+          const text = $(el).text().trim();
+          return text.length > 0 && text.length < 50 && 
+                 !text.includes('http') && 
+                 text !== $link.text().trim() &&
+                 text !== metadata.publishedDate;
+        });
+        
+        if ($nearbyText.length > 0) {
+          const text = $nearbyText.first().text().trim();
+          if (text) {
+            metadata.blogName = text;
+            if (!metadata.author) {
+              metadata.author = text;
+            }
+          }
+        }
+      }
+      
+    } catch (error) {
+      // 메타정보 추출 실패 시 빈 객체 반환
+    }
+    
+    return metadata;
   }
 
   normalizeUrl(url: string): string {

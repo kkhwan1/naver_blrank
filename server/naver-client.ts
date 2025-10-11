@@ -6,6 +6,9 @@ export interface BlogResult {
   position: number;
   isVisible?: boolean; // Phase 1: CSS visibility 체크 결과
   hiddenReason?: string; // Phase 1: 숨겨진 이유 ('css_hidden', 'display_none', 'visibility_hidden', 'opacity_zero')
+  blogName?: string; // 블로그명
+  author?: string; // 발행자명
+  publishedDate?: string; // 발행일 (예: "5일 전", "2024.01.15")
 }
 
 export interface SearchResult {
