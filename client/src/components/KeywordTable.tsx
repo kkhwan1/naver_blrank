@@ -32,7 +32,7 @@ import {
 import StatusDot from './StatusDot';
 import RankBadge from './RankBadge';
 import ChangeIndicator from './ChangeIndicator';
-import { MoreVertical, ExternalLink, Info, LineChart, Trash2 } from 'lucide-react';
+import { MoreVertical, ExternalLink, Info, LineChart, Trash2, FileText, TrendingUp } from 'lucide-react';
 
 interface SmartblockCategory {
   categoryName: string;
@@ -244,7 +244,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                 <TableCell className="text-right">
                   {keyword.searchVolume !== null && keyword.searchVolume !== undefined ? (
                     <span className="text-sm font-medium">
-                      {keyword.searchVolume.toLocaleString()}
+                      {keyword.searchVolume.toLocaleString()}회
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>
@@ -252,18 +252,29 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                 </TableCell>
                 <TableCell className="text-right">
                   {keyword.documentCount !== null && keyword.documentCount !== undefined ? (
-                    <span className="text-sm font-medium">
-                      {keyword.documentCount.toLocaleString()}
-                    </span>
+                    <div className="flex items-center justify-end gap-1">
+                      <FileText className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        {keyword.documentCount.toLocaleString()}개
+                      </span>
+                    </div>
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
                 </TableCell>
                 <TableCell className="text-right">
                   {keyword.competitionRate ? (
-                    <span className="text-sm font-medium">
-                      {parseFloat(keyword.competitionRate).toFixed(2)}
-                    </span>
+                    <Badge 
+                      variant={
+                        parseFloat(keyword.competitionRate) > 100 ? 'destructive' : 
+                        parseFloat(keyword.competitionRate) > 50 ? 'default' : 
+                        'secondary'
+                      }
+                      className="gap-1"
+                    >
+                      <TrendingUp className="w-3 h-3" />
+                      {parseFloat(keyword.competitionRate).toFixed(1)}
+                    </Badge>
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
