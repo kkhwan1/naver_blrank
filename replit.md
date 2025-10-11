@@ -20,7 +20,7 @@ The backend operates on Node.js with Express.js and TypeScript, using tsx for de
 
 ### Data Models
 
-The current database schema includes `keywords` and `measurements` tables. The `keywords` table stores search keywords, target URLs, configurable `measurementInterval`, and `isActive` status. 
+The current database schema includes `keywords` and `measurements` tables. The `keywords` table stores search keywords, target URLs, configurable `measurementInterval`, `isActive` status, `documentCount` (number of competing documents), and `competitionRate` (documentCount / monthlySearchVolume). 
 
 The `measurements` table records:
 - Basic measurements: `measuredAt`, `rankSmartblock` (1-3 or null), `smartblockStatus` (OK, NOT_IN_BLOCK, BLOCK_MISSING, ERROR, RANKED_BUT_HIDDEN), `smartblockConfidence`, `durationMs`, `method`
@@ -39,6 +39,16 @@ The project uses a monorepo structure with shared TypeScript types between the f
 - **Category System**: 품질 필터 (Quality Filter), 스팸 의심 (Spam Suspected), 일시적 검토 (Temporary Review), 정책 위반 (Policy Violation), 알 수 없음 (Unknown)
 - **UI Implementation**: Category-specific badges with icons (Shield, AlertTriangle, Clock), color-coded alerts, recovery time estimates, and actionable guidance
 - **Bug Fix**: Standardized category naming from underscores to spaces (품질_필터 → 품질 필터) to match frontend expectations
+
+### Competition Analysis Feature (✅ Completed - October 2025)
+- **Data Model**: Added `documentCount` and `competitionRate` fields to keywords table
+- **Naver Search API Integration**: Implemented document count retrieval via blog search API (total field)
+- **Competition Rate Calculation**: Formula = documentCount / monthlySearchVolume (fully documented in code)
+- **API Endpoint**: POST `/api/keywords/:id/update-competition` fetches document count and calculates competition rate
+- **Keyword Sanitization**: Special characters removed before API calls (keeps only Korean, English, numbers, spaces) to prevent 400 errors
+- **UI Enhancement**: Added documentCount and competitionRate columns to KeywordTable with clickable badges
+- **Remeasurement Feature**: Clicking rank badge or measurement interval badge triggers both rank measurement and competition update
+- **Storage Layer**: Implemented `updateKeywordCompetition` in both MemStorage and PostgresStorage
 
 ### Phase 3: Pattern Analysis & Shadowban Detection (🚧 Planned)
 Future enhancements include:
