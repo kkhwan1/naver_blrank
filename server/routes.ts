@@ -7,6 +7,7 @@ import { SmartBlockParser } from "./smartblock-parser";
 import { NaverHTMLParser } from "./html-parser";
 import { NaverSearchAdClient } from "./naver-searchad-client";
 import { NaverSearchClient } from "./naver-search-client";
+import { hiddenReasonClassifier } from "./hidden-reason-classifier";
 import passport from "./auth";
 import bcrypt from "bcrypt";
 import axios from 'axios';
@@ -415,9 +416,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           blogResults
         );
 
-        // Phase 1: 통합검색 이탈 감지 - rank가 있지만 CSS로 숨겨진 경우 체크
+        // Phase 1 & 2: 통합검색 이탈 감지 및 분류
         let isVisibleInSearch: boolean | undefined = undefined;
         let hiddenReason: string | undefined = undefined;
+        let hiddenReasonCategory: string | undefined = undefined;
+        let hiddenReasonDetail: string | undefined = undefined;
+        let detectionMethod: string | undefined = undefined;
+        let recoveryEstimate: string | undefined = undefined;
         let smartblockStatus = rankResult.rank ? 'OK' : 'NOT_IN_BLOCK';
 
         if (rankResult.rank && rankResult.matchedUrl) {
@@ -431,9 +436,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hiddenReason = matchedBlog.hiddenReason;
 
             // 순위는 있지만 실제로는 숨겨진 경우 (통합검색 이탈)
-            if (matchedBlog.isVisible === false) {
+            if (matchedBlog.isVisible === false && hiddenReason) {
               smartblockStatus = 'RANKED_BUT_HIDDEN';
-              console.log(`⚠️ 통합검색 이탈 감지! Keyword #${keyword.id}: rank=${rankResult.rank}, hidden_reason=${hiddenReason}`);
+              
+              // Phase 2: 숨김 이유 분류
+              const classification = hiddenReasonClassifier.classify(hiddenReason, 'css_check');
+              hiddenReasonCategory = classification.category;
+              hiddenReasonDetail = classification.detail;
+              detectionMethod = classification.detectionMethod;
+              recoveryEstimate = classification.recoveryEstimate;
+              
+              console.log(`⚠️ 통합검색 이탈 감지! Keyword #${keyword.id}: rank=${rankResult.rank}`);
+              console.log(`   기술적 원인: ${hiddenReason}`);
+              console.log(`   분류: ${classification.category} (${classification.severity})`);
+              console.log(`   예상 복구: ${classification.recoveryEstimate}`);
             }
           }
         }
@@ -483,6 +499,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           smartblockDetails: detailedCategories.length > 0 ? JSON.stringify(detailedCategories) : null,
           isVisibleInSearch,
           hiddenReason,
+          hiddenReasonCategory,      // Phase 2
+          hiddenReasonDetail,         // Phase 2
+          detectionMethod,            // Phase 2
+          recoveryEstimate,           // Phase 2
           searchVolumeAvg: searchVolumeStr,
           durationMs: Date.now() - startTime,
           method: searchMethod,

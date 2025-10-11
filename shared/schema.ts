@@ -44,7 +44,11 @@ export const measurements = pgTable("measurements", {
   smartblockConfidence: decimal("smartblock_confidence", { precision: 3, scale: 2 }),
   smartblockDetails: text("smartblock_details"),
   isVisibleInSearch: boolean("is_visible_in_search"), // Phase 1: 통합검색 실제 노출 여부
-  hiddenReason: text("hidden_reason"), // Phase 1: 숨겨진 이유 ('css_hidden', 'collapsed', 'tab_hidden', etc.)
+  hiddenReason: text("hidden_reason"), // Phase 1: 기술적 원인 ('display_none', 'visibility_hidden', 'opacity_zero', etc.)
+  hiddenReasonCategory: text("hidden_reason_category"), // Phase 2: 사용자 친화적 카테고리 ('품질_필터', '스팸_의심', '일시적_검토', '광고_우선노출', etc.)
+  hiddenReasonDetail: text("hidden_reason_detail"), // Phase 2: 사용자에게 보여줄 구체적 설명
+  detectionMethod: text("detection_method"), // Phase 2: 감지 방법 ('css_check', 'computed_style', 'z_index_check', etc.)
+  recoveryEstimate: text("recovery_estimate"), // Phase 2: 예상 복구 시간 ('1-2시간', '24-48시간', '알 수 없음', etc.)
   blogTabRank: integer("blog_tab_rank"),
   searchVolumeAvg: decimal("search_volume_avg", { precision: 10, scale: 2 }),
   durationMs: integer("duration_ms"),
