@@ -149,19 +149,19 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
         </div>
       </div>
 
-      <div className="border rounded-lg">
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">상태</TableHead>
-              <TableHead>키워드</TableHead>
-              <TableHead className="text-right">현재 순위</TableHead>
-              <TableHead className="text-right">변동</TableHead>
-              <TableHead className="text-right">월간 검색량</TableHead>
-              <TableHead className="text-right">문서수</TableHead>
-              <TableHead className="text-right">경쟁률</TableHead>
-              <TableHead>측정 주기</TableHead>
-              <TableHead>마지막 측정</TableHead>
+              <TableHead className="w-12 whitespace-nowrap">상태</TableHead>
+              <TableHead className="w-[200px] whitespace-nowrap">키워드</TableHead>
+              <TableHead className="text-right whitespace-nowrap">현재 순위</TableHead>
+              <TableHead className="text-right whitespace-nowrap">변동</TableHead>
+              <TableHead className="text-right whitespace-nowrap">월간검색량</TableHead>
+              <TableHead className="text-right whitespace-nowrap">문서수</TableHead>
+              <TableHead className="text-right whitespace-nowrap w-[100px]">경쟁률</TableHead>
+              <TableHead className="whitespace-nowrap">측정주기</TableHead>
+              <TableHead className="whitespace-nowrap">마지막 측정</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -177,17 +177,18 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                   <StatusDot status={keyword.status} />
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{keyword.keyword}</span>
+                  <div className="flex flex-col gap-0.5 max-w-[200px]">
+                    <span className="font-medium truncate" title={keyword.keyword}>{keyword.keyword}</span>
                     <a
                       href={keyword.targetUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-muted-foreground font-mono flex items-center gap-1 hover:text-primary"
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 truncate"
                       onClick={(e) => e.stopPropagation()}
+                      title={keyword.targetUrl}
                     >
-                      {keyword.targetUrl.substring(0, 50)}...
-                      <ExternalLink className="w-3 h-3" />
+                      <span className="truncate">{keyword.targetUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                      <ExternalLink className="w-3 h-3 flex-shrink-0" />
                     </a>
                   </div>
                 </TableCell>
@@ -241,7 +242,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                 <TableCell className="text-right">
                   <ChangeIndicator change={keyword.change} />
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right whitespace-nowrap">
                   {keyword.searchVolume !== null && keyword.searchVolume !== undefined ? (
                     <span className="text-sm font-medium">
                       {keyword.searchVolume.toLocaleString()}회
@@ -250,7 +251,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right whitespace-nowrap">
                   {keyword.documentCount !== null && keyword.documentCount !== undefined ? (
                     <div className="flex items-center justify-end gap-1">
                       <FileText className="w-3 h-3 text-muted-foreground" />
@@ -262,24 +263,26 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
-                  {keyword.competitionRate ? (
-                    <Badge 
-                      variant={
-                        parseFloat(keyword.competitionRate) > 100 ? 'destructive' : 
-                        parseFloat(keyword.competitionRate) > 50 ? 'default' : 
-                        'secondary'
-                      }
-                      className="gap-1"
-                    >
-                      <TrendingUp className="w-3 h-3" />
-                      {parseFloat(keyword.competitionRate).toFixed(1)}
-                    </Badge>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">-</span>
-                  )}
+                <TableCell className="text-right whitespace-nowrap">
+                  <div className="flex justify-end min-w-[60px]">
+                    {keyword.competitionRate ? (
+                      <Badge 
+                        variant={
+                          parseFloat(keyword.competitionRate) > 100 ? 'destructive' : 
+                          parseFloat(keyword.competitionRate) > 50 ? 'default' : 
+                          'secondary'
+                        }
+                        className="gap-1 whitespace-nowrap"
+                      >
+                        <TrendingUp className="w-3 h-3" />
+                        {parseFloat(keyword.competitionRate).toFixed(1)}
+                      </Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
+                  </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -288,7 +291,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     className="hover-elevate active-elevate-2 rounded-md transition-all"
                     data-testid={`interval-remeasure-${keyword.id}`}
                   >
-                    <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate">
+                    <Badge variant="outline" className="text-xs no-default-hover-elevate no-default-active-elevate whitespace-nowrap">
                       {keyword.measurementInterval === '1h' && '1시간'}
                       {keyword.measurementInterval === '6h' && '6시간'}
                       {keyword.measurementInterval === '12h' && '12시간'}
@@ -297,7 +300,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     </Badge>
                   </button>
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>
                 </TableCell>
                 <TableCell>
