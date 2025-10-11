@@ -365,42 +365,97 @@ export class NaverHTMLParser {
     const metadata: { blogName?: string; author?: string; publishedDate?: string } = {};
     
     try {
-      // 링크의 부모 컨테이너에서 메타정보 찾기
-      let $container = $link.closest('div, li, article');
-      let depth = 0;
+      // 스마트블록 카드 레벨까지 올라가기 (li.bx, div[data-cr-area*="blog"], article 등)
+      let $card = $link.closest('li.bx, li[class*="blog"], div[data-cr-area*="blog"], article, .item');
       
-      // 충분히 큰 컨테이너 찾기 (최대 5단계 위로)
-      while ($container.length > 0 && depth < 5) {
-        const containerText = $container.text().length;
-        if (containerText > 50) break;
-        $container = $container.parent();
-        depth++;
+      // 카드를 찾지 못하면 충분히 큰 컨테이너 찾기
+      if ($card.length === 0) {
+        let $container = $link.parent();
+        let depth = 0;
+        while ($container.length > 0 && depth < 7) {
+          const containerText = $container.text().length;
+          if (containerText > 100) {
+            $card = $container;
+            break;
+          }
+          $container = $container.parent();
+          depth++;
+        }
       }
       
-      if ($container.length === 0) {
-        $container = $link.parent();
+      if ($card.length === 0) {
+        $card = $link.parent();
       }
       
-      // 발행일 추출 (여러 패턴 시도)
-      // 패턴 1: time 태그
-      const $time = $container.find('time');
-      if ($time.length > 0) {
-        metadata.publishedDate = $time.text().trim();
+      // 발행일 추출 (우선순위: data 속성 > 특정 클래스 > 텍스트 패턴)
+      
+      // 패턴 1: data-time 속성 (가장 신뢰도 높음)
+      const $dataTime = $card.find('[data-time]').first();
+      if ($dataTime.length > 0) {
+        const dataTimeAttr = $dataTime.attr('data-time');
+        const displayText = $dataTime.text().trim();
+        metadata.publishedDate = displayText || dataTimeAttr || undefined;
       }
       
-      // 패턴 2: 날짜 형식 텍스트 (예: "5일 전", "2024.01.15", "1시간 전")
+      // 패턴 2: .source_txt, .source_box, .detail_info 같은 네이버 메타 블록
       if (!metadata.publishedDate) {
+        const $metaBlock = $card.find('.source_txt, .source_box, .detail_info, .sub_txt, .sub_time').first();
+        if ($metaBlock.length > 0) {
+          const metaText = $metaBlock.text().trim();
+          // 불릿(·)으로 구분된 메타 정보에서 날짜 추출
+          const parts = metaText.split(/[·•]/);
+          for (const part of parts) {
+            const trimmed = part.trim();
+            if (/(\d+일\s*전|\d+시간\s*전|\d+분\s*전|\d{4}\.\d{1,2}\.\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|어제|오늘)/.test(trimmed)) {
+              const match = trimmed.match(/(\d+일\s*전|\d+시간\s*전|\d+분\s*전|\d{4}\.\d{1,2}\.\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|어제|오늘)/);
+              if (match && match[1]) {
+                metadata.publishedDate = match[1].trim();
+                break;
+              }
+            }
+          }
+        }
+      }
+      
+      // 패턴 3: time 태그
+      if (!metadata.publishedDate) {
+        const $time = $card.find('time').first();
+        if ($time.length > 0) {
+          metadata.publishedDate = $time.text().trim();
+        }
+      }
+      
+      // 패턴 4: 날짜/시간 관련 클래스
+      if (!metadata.publishedDate) {
+        const $dateEl = $card.find('[class*="date"], [class*="time"], dd, .txt').filter((i, el) => {
+          const text = $(el).text().trim();
+          return /(\d+일\s*전|\d+시간\s*전|\d+분\s*전|\d{4}\.\d{1,2}\.\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|어제|오늘)/.test(text);
+        }).first();
+        
+        if ($dateEl.length > 0) {
+          const dateText = $dateEl.text().trim();
+          const match = dateText.match(/(\d+일\s*전|\d+시간\s*전|\d+분\s*전|\d{4}\.\d{1,2}\.\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|어제|오늘)/);
+          if (match && match[1]) {
+            metadata.publishedDate = match[1].trim();
+          }
+        }
+      }
+      
+      // 패턴 5: 전체 카드 텍스트에서 날짜 패턴 찾기 (마지막 수단)
+      if (!metadata.publishedDate) {
+        const cardText = $card.text();
         const datePatterns = [
           /(\d+일\s*전)/,
           /(\d+시간\s*전)/,
           /(\d+분\s*전)/,
           /(\d{4}\.\d{1,2}\.\d{1,2})/,
           /(\d{4}-\d{1,2}-\d{1,2})/,
+          /(어제)/,
+          /(오늘)/,
         ];
         
-        const containerText = $container.text();
         for (const pattern of datePatterns) {
-          const match = containerText.match(pattern);
+          const match = cardText.match(pattern);
           if (match && match[1]) {
             metadata.publishedDate = match[1].trim();
             break;
@@ -409,39 +464,48 @@ export class NaverHTMLParser {
       }
       
       // 블로그명/발행자 추출
-      // 패턴 1: class에 'author', 'blogger', 'writer' 포함된 요소
-      const $author = $container.find('[class*="author"], [class*="blogger"], [class*="writer"], [class*="name"]').first();
-      if ($author.length > 0) {
-        const authorText = $author.text().trim();
-        if (authorText && authorText.length < 50 && authorText !== metadata.publishedDate) {
-          metadata.author = authorText;
-          metadata.blogName = authorText;
+      // 패턴 1: data-source 속성이나 .source_txt, .sub_name 같은 네이버 특유 클래스
+      const $source = $card.find('.source_txt, .sub_name, [data-source], [class*="author"], [class*="blogger"], dt').first();
+      if ($source.length > 0) {
+        const sourceText = $source.text().trim();
+        // 불릿으로 구분된 경우 첫 번째 부분이 보통 블로그명
+        const blogName = sourceText.split(/[·•]/)[0].trim();
+        if (blogName && blogName.length < 50 && blogName !== metadata.publishedDate) {
+          metadata.author = blogName;
+          metadata.blogName = blogName;
         }
       }
       
-      // 패턴 2: 링크 근처의 작은 텍스트 요소 (보통 블로그명)
+      // 패턴 2: 카드 내 작은 텍스트 요소에서 블로그명 찾기
       if (!metadata.blogName) {
-        const $nearbyText = $container.find('span, div, p').filter((i, el) => {
+        const $nearbyText = $card.find('span, div, p, dd, dt').filter((i, el) => {
           const text = $(el).text().trim();
           return text.length > 0 && text.length < 50 && 
                  !text.includes('http') && 
                  text !== $link.text().trim() &&
-                 text !== metadata.publishedDate;
+                 text !== metadata.publishedDate &&
+                 !/^\d/.test(text); // 숫자로 시작하지 않음 (날짜 제외)
         });
         
         if ($nearbyText.length > 0) {
           const text = $nearbyText.first().text().trim();
-          if (text) {
-            metadata.blogName = text;
+          const blogName = text.split(/[·•]/)[0].trim();
+          if (blogName) {
+            metadata.blogName = blogName;
             if (!metadata.author) {
-              metadata.author = text;
+              metadata.author = blogName;
             }
           }
         }
       }
       
+      // 디버그 로그 (개발 환경에서만)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📝 메타정보 추출: blogName="${metadata.blogName}", author="${metadata.author}", date="${metadata.publishedDate}"`);
+      }
+      
     } catch (error) {
-      // 메타정보 추출 실패 시 빈 객체 반환
+      console.error('메타정보 추출 오류:', error);
     }
     
     return metadata;

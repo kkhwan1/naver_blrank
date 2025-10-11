@@ -24,6 +24,9 @@ interface SmartblockCategory {
   topBlogs: Array<{
     url: string;
     title: string;
+    blogName?: string;
+    author?: string;
+    publishedDate?: string;
   }>;
   message?: string;
 }
@@ -311,22 +314,44 @@ export default function MeasurementDetailDialog({
                           </p>
 
                           {category.topBlogs.length > 0 && (
-                            <div className="space-y-1 mt-2">
+                            <div className="space-y-2 mt-2">
                               <p className="text-xs font-medium text-muted-foreground">
                                 {category.rank ? '해당 카테고리 상위 블로그:' : '이 카테고리에서 대신 노출된 상위 블로그:'}
                               </p>
                               {category.topBlogs.map((blog, blogIdx) => (
-                                <a
-                                  key={blogIdx}
-                                  href={blog.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-xs hover:text-primary"
-                                >
-                                  <span className="text-muted-foreground">{blogIdx + 1}.</span>
-                                  <span className="truncate flex-1">{blog.title || blog.url}</span>
-                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                                </a>
+                                <div key={blogIdx} className="p-2 border rounded-md hover-elevate">
+                                  <a
+                                    href={blog.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-start gap-2 text-xs"
+                                  >
+                                    <span className="text-muted-foreground mt-0.5">{blogIdx + 1}.</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="truncate font-medium text-foreground hover:text-primary">
+                                          {blog.title || blog.url}
+                                        </span>
+                                        <ExternalLink className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
+                                      </div>
+                                      {(blog.blogName || blog.author || blog.publishedDate) && (
+                                        <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                                          {(blog.blogName || blog.author) && (
+                                            <span className="truncate">
+                                              {blog.blogName || blog.author}
+                                            </span>
+                                          )}
+                                          {blog.publishedDate && (
+                                            <>
+                                              {(blog.blogName || blog.author) && <span>·</span>}
+                                              <span className="whitespace-nowrap">{blog.publishedDate}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </a>
+                                </div>
                               ))}
                             </div>
                           )}

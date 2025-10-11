@@ -471,6 +471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 topBlogs: category.blogs.slice(0, 3).map((b: any) => ({
                   url: b.url,
                   title: b.title,
+                  blogName: b.blogName,
+                  author: b.author,
+                  publishedDate: b.publishedDate,
                 })),
                 message: categoryRankResult.rank 
                   ? `${category.categoryName}에서 ${categoryRankResult.rank}위 발견`
@@ -486,6 +489,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               topBlogs: blogResults.slice(0, 3).map((b: any) => ({
                 url: b.url,
                 title: b.title,
+                blogName: b.blogName,
+                author: b.author,
+                publishedDate: b.publishedDate,
               })),
               message: rankResult.rank 
                 ? `전체 검색 결과에서 ${rankResult.rank}위 발견`
@@ -519,6 +525,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             topBlogs: blogResults.slice(0, 3).map(b => ({
               url: b.url,
               title: b.title,
+              blogName: b.blogName,
+              author: b.author,
+              publishedDate: b.publishedDate,
             })),
           }
         });
