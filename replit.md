@@ -50,6 +50,22 @@ The project uses a monorepo structure with shared TypeScript types between the f
 - **Remeasurement Feature**: Clicking rank badge or measurement interval badge triggers both rank measurement and competition update
 - **Storage Layer**: Implemented `updateKeywordCompetition` in both MemStorage and PostgresStorage
 
+### Blog Metadata Extraction (✅ Completed - October 2025)
+- **Data Model**: Added `blogName`, `author`, `publishedDate` fields to BlogResult interface
+- **HTML Parser Enhancement**: 
+  - Escalates to SmartBlock card container (li.bx, div[data-cr-area*="blog"]) for comprehensive metadata extraction
+  - Prioritizes data-time attributes for reliable date extraction
+  - Parses Naver-specific metadata blocks (.source_txt, .source_box, .detail_info)
+  - Handles bullet-separated (·) metadata information
+  - Supports various date formats: "5일 전", "2024.10.11", "어제", "오늘", etc.
+- **Title Cleanup**: Automatically removes "접기" suffix from blog post titles
+- **API Integration**: topBlogs in measurement responses now include blogName, author, and publishedDate
+- **UI Display**: Measurement Detail Dialog shows enriched blog cards with:
+  - Blog/post title (cleaned)
+  - Blog name or author name
+  - Published date when available
+- **Testing**: E2E tests confirm metadata extraction and display functionality
+
 ### Phase 3: Pattern Analysis & Shadowban Detection (🚧 Planned)
 Future enhancements include:
 - Time-series pattern analysis for trend detection
