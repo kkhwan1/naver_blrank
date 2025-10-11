@@ -20,11 +20,35 @@ The backend operates on Node.js with Express.js and TypeScript, using tsx for de
 
 ### Data Models
 
-The current database schema includes `keywords` and `measurements` tables. The `keywords` table stores search keywords, target URLs, configurable `measurementInterval`, and `isActive` status. The `measurements` table records `measuredAt` timestamps, `rankSmartblock` (1-3 or null), `smartblockStatus` (OK, NOT_IN_BLOCK, BLOCK_MISSING, ERROR), `smartblockConfidence`, measurement `durationMs`, and the `method` used.
+The current database schema includes `keywords` and `measurements` tables. The `keywords` table stores search keywords, target URLs, configurable `measurementInterval`, and `isActive` status. 
+
+The `measurements` table records:
+- Basic measurements: `measuredAt`, `rankSmartblock` (1-3 or null), `smartblockStatus` (OK, NOT_IN_BLOCK, BLOCK_MISSING, ERROR, RANKED_BUT_HIDDEN), `smartblockConfidence`, `durationMs`, `method`
+- **Phase 2 hidden reason classification** (October 2025): `hiddenReason`, `hiddenReasonCategory` (품질 필터, 스팸 의심, 일시적 검토, 정책 위반, 알 수 없음), `hiddenReasonDetail`, `detectionMethod`, `recoveryEstimate`, `actionGuide`
+- Search visibility tracking: `isVisibleInSearch` (boolean)
 
 ### Key Architectural Decisions
 
-The project uses a monorepo structure with shared TypeScript types between the frontend and backend. Component design follows atomic principles, leveraging shadcn/ui for consistency and accessibility. Vite and esbuild are used for efficient build processes. The primary Smart Block detection method is direct HTML parsing with Cheerio due to its 100% accuracy for rank 1-3 detection and superior performance. SerpAPI is maintained for fallback/comparison but is not recommended for production Smart Block tracking. Future plans include a worker pool for concurrent processing, Naver Search API integration, and real-time updates via WebSockets.
+The project uses a monorepo structure with shared TypeScript types between the frontend and backend. Component design follows atomic principles, leveraging shadcn/ui for consistency and accessibility. Vite and esbuild are used for efficient build processes. The primary Smart Block detection method is direct HTML parsing with Cheerio due to its 100% accuracy for rank 1-3 detection and superior performance. SerpAPI is maintained for fallback/comparison but is not recommended for production Smart Block tracking.
+
+## Recent Changes (October 2025)
+
+### Phase 2: Hidden Reason Classification System (✅ Completed)
+- **Data Model Extension**: Added `hiddenReason`, `hiddenReasonCategory`, `hiddenReasonDetail`, `detectionMethod`, `recoveryEstimate`, `actionGuide` fields to measurements table
+- **Classification Engine**: Created `hidden-reason-classifier.ts` to translate technical CSS hiding reasons into user-friendly business categories
+- **Category System**: 품질 필터 (Quality Filter), 스팸 의심 (Spam Suspected), 일시적 검토 (Temporary Review), 정책 위반 (Policy Violation), 알 수 없음 (Unknown)
+- **UI Implementation**: Category-specific badges with icons (Shield, AlertTriangle, Clock), color-coded alerts, recovery time estimates, and actionable guidance
+- **Bug Fix**: Standardized category naming from underscores to spaces (품질_필터 → 품질 필터) to match frontend expectations
+
+### Phase 3: Pattern Analysis & Shadowban Detection (🚧 Planned)
+Future enhancements include:
+- Time-series pattern analysis for trend detection
+- Shadowban detection algorithm (7+ consecutive days hidden)
+- Automated re-measurement scheduler (30min/1hr intervals)
+- Recovery notifications and alerts
+- Worker pool for concurrent processing
+- Naver Search API integration
+- Real-time updates via WebSockets
 
 ## External Dependencies
 
