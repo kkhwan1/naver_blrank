@@ -108,6 +108,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
+  // 개발 환경 전용: 테스트용 자동 로그인 엔드포인트
+  if (process.env.NODE_ENV === 'development') {
+    app.post('/api/auto-login', async (req, res) => {
+      try {
+        const username = req.body.username || 'admin@gmail.com';
+        const user = await storage.getUserByUsername(username);
+        
+        if (!user) {
+          return res.status(404).json({ error: '사용자를 찾을 수 없습니다' });
+        }
+
+        req.login(user, (err) => {
+          if (err) {
+            return res.status(500).json({ error: '자동 로그인 실패' });
+          }
+          res.json({
+            id: user.id,
+            username: user.username,
+            role: user.role,
+          });
+        });
+      } catch (error) {
+        console.error('자동 로그인 오류:', error);
+        res.status(500).json({ error: '자동 로그인 중 오류가 발생했습니다' });
+      }
+    });
+  }
+
   app.post('/api/logout', (req, res) => {
     req.logout((err) => {
       if (err) {
