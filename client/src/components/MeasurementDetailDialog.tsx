@@ -264,12 +264,6 @@ export default function MeasurementDetailDialog({
                       </p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">측정 방식:</span>
-                      <p className="font-medium">
-                        {latestMeasurement.method === 'serpapi' ? 'SerpAPI' : 'HTML 파싱'}
-                      </p>
-                    </div>
-                    <div>
                       <span className="text-muted-foreground">소요 시간:</span>
                       <p className="font-medium">{(latestMeasurement.durationMs / 1000).toFixed(2)}초</p>
                     </div>

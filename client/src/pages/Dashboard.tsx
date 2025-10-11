@@ -109,7 +109,7 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['/api/measurements', variables.id] });
       toast({
         title: '측정 완료',
-        description: `순위 측정 완료 (방식: ${data.method === 'serpapi' ? 'SerpAPI' : 'HTML 파싱'})`,
+        description: '순위 측정이 완료되었습니다.',
       });
       
       setDetailDialogOpen(true);
