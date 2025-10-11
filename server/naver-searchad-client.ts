@@ -66,6 +66,12 @@ export class NaverSearchAdClient {
     this.validateCredentials();
     
     try {
+      // Sanitize keyword: remove special characters that Naver API doesn't accept
+      // Keep only Korean, English, numbers, and spaces
+      const sanitizedKeyword = keyword.replace(/[^가-힣a-zA-Z0-9\s]/g, ' ').trim();
+      
+      console.log(`[Naver SearchAd] Original keyword: "${keyword}", Sanitized: "${sanitizedKeyword}"`);
+      
       const timestamp = Date.now().toString();
       const method = 'GET';
       const uri = '/keywordstool';
@@ -73,7 +79,7 @@ export class NaverSearchAdClient {
 
       const response = await axios.get(`${this.baseUrl}${uri}`, {
         params: {
-          hintKeywords: keyword,
+          hintKeywords: sanitizedKeyword,
           showDetail: 1,
         },
         headers: {
@@ -106,6 +112,12 @@ export class NaverSearchAdClient {
     this.validateCredentials();
     
     try {
+      // Sanitize keyword: remove special characters that Naver API doesn't accept
+      // Keep only Korean, English, numbers, and spaces
+      const sanitizedKeyword = keyword.replace(/[^가-힣a-zA-Z0-9\s]/g, ' ').trim();
+      
+      console.log(`[Naver SearchAd Related] Original keyword: "${keyword}", Sanitized: "${sanitizedKeyword}"`);
+      
       const timestamp = Date.now().toString();
       const method = 'GET';
       const uri = '/keywordstool';
@@ -113,7 +125,7 @@ export class NaverSearchAdClient {
 
       const response = await axios.get(`${this.baseUrl}${uri}`, {
         params: {
-          hintKeywords: keyword,
+          hintKeywords: sanitizedKeyword,
           showDetail: 1,
         },
         headers: {
