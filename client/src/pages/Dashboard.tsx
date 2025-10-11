@@ -287,8 +287,7 @@ export default function Dashboard() {
             <KeywordTable
               keywords={keywordsData}
               onRowClick={(id: string) => {
-                if (measuringId === id) return;
-                handleMeasureKeyword(id);
+                handleViewDetails(id);
               }}
               onViewDetails={handleViewDetails}
               onDelete={handleDeleteKeyword}

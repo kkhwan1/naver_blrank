@@ -319,12 +319,12 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          onRowClick?.(keyword.id);
+                          onRemeasure?.(keyword.id);
                         }}
                         data-testid={`action-measure-${keyword.id}`}
                       >
                         <LineChart className="w-4 h-4 mr-2" />
-                        순위 측정
+                        측정 실행
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={(e) => {
