@@ -749,6 +749,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * 문서수 조회 및 경쟁률 계산 API
+   * 
+   * 경쟁률 계산 공식:
+   * - 경쟁률 = 네이버 검색 문서수 / 월간 총 검색량
+   * - 문서수: 네이버 Search API에서 조회한 total 값
+   * - 월간 총 검색량: PC 검색량 + 모바일 검색량 (Naver Search Ad API)
+   * 
+   * 경쟁률 해석:
+   * - 낮을수록 경쟁이 적고, 높을수록 경쟁이 치열함
+   * - 예: 경쟁률 100 = 검색량 대비 문서가 100배 많음 (치열)
+   * - 예: 경쟁률 0.1 = 검색량 대비 문서가 적음 (기회)
+   */
+  app.post('/api/keywords/:id/update-competition', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const keywordId = parseInt(req.params.id);
+      const keyword = await storage.getKeyword(keywordId);
+
+      if (!keyword) {
+        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      }
+
+      // Check ownership
+      if (user.role !== 'admin' && keyword.userId !== user.id) {
+        return res.status(403).json({ error: '권한이 없습니다' });
+      }
+
+      console.log(`[경쟁률 계산] 시작: ${keyword.keyword}`);
+
+      // 1. 네이버 Search API로 문서수 조회
+      const blogResults = await naverSearchClient.searchBlogs(keyword.keyword, 1, 1);
+      const documentCount = blogResults.total;
+      console.log(`[경쟁률 계산] 문서수: ${documentCount.toLocaleString()}개`);
+
+      // 2. 네이버 Search Ad API로 월간 검색량 조회
+      const stats = await naverSearchAdClient.getKeywordStats(keyword.keyword);
+      
+      let competitionRate = null;
+      let monthlySearchVolume = null;
+
+      if (stats) {
+        // 월간 총 검색량 = PC + Mobile
+        const pcQcCnt = typeof stats.monthlyPcQcCnt === 'string' ? parseInt(stats.monthlyPcQcCnt) : stats.monthlyPcQcCnt;
+        const mobileQcCnt = typeof stats.monthlyMobileQcCnt === 'string' ? parseInt(stats.monthlyMobileQcCnt) : stats.monthlyMobileQcCnt;
+        monthlySearchVolume = (pcQcCnt || 0) + (mobileQcCnt || 0);
+        console.log(`[경쟁률 계산] 월간 검색량: ${monthlySearchVolume.toLocaleString()}회 (PC: ${stats.monthlyPcQcCnt}, Mobile: ${stats.monthlyMobileQcCnt})`);
+
+        // 경쟁률 = 문서수 / 월간검색량
+        if (monthlySearchVolume > 0) {
+          competitionRate = documentCount / monthlySearchVolume;
+          console.log(`[경쟁률 계산] 경쟁률: ${competitionRate.toFixed(2)} (문서수 ${documentCount.toLocaleString()} / 검색량 ${monthlySearchVolume.toLocaleString()})`);
+        } else {
+          console.log(`[경쟁률 계산] 검색량이 0이므로 경쟁률 계산 불가`);
+        }
+      } else {
+        console.log(`[경쟁률 계산] 검색광고 API에서 통계를 가져올 수 없음`);
+      }
+
+      // 3. DB 업데이트
+      await storage.updateKeywordCompetition(keywordId, documentCount, competitionRate ? competitionRate.toString() : null);
+      console.log(`[경쟁률 계산] DB 업데이트 완료`);
+
+      res.json({
+        keyword: keyword.keyword,
+        documentCount,
+        monthlySearchVolume,
+        competitionRate: competitionRate ? parseFloat(competitionRate.toFixed(2)) : null,
+        interpretation: competitionRate 
+          ? competitionRate < 1 
+            ? '경쟁 낮음 - 기회' 
+            : competitionRate < 10 
+              ? '경쟁 보통' 
+              : '경쟁 치열'
+          : '데이터 부족',
+      });
+    } catch (error) {
+      console.error('경쟁률 계산 오류:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : '경쟁률 계산 중 오류가 발생했습니다'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

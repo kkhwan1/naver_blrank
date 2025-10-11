@@ -23,6 +23,7 @@ export interface IStorage {
   getKeyword(id: number): Promise<Keyword | undefined>;
   createKeyword(keyword: InsertKeyword): Promise<Keyword>;
   updateKeyword(id: number, data: Partial<InsertKeyword>): Promise<Keyword | undefined>;
+  updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null): Promise<void>;
   deleteKeyword(id: number): Promise<boolean>;
   
   getMeasurements(keywordId: number, limit?: number): Promise<Measurement[]>;
@@ -120,6 +121,9 @@ export class MemStorage implements IStorage {
       keyword: insertKeyword.keyword,
       targetUrl: insertKeyword.targetUrl,
       isActive: insertKeyword.isActive ?? true,
+      measurementInterval: insertKeyword.measurementInterval ?? '24h',
+      documentCount: null,
+      competitionRate: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -138,6 +142,19 @@ export class MemStorage implements IStorage {
     };
     this.keywords.set(id, updated);
     return updated;
+  }
+
+  async updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null): Promise<void> {
+    const keyword = this.keywords.get(id);
+    if (!keyword) return;
+    
+    const updated: Keyword = {
+      ...keyword,
+      documentCount,
+      competitionRate,
+      updatedAt: new Date(),
+    };
+    this.keywords.set(id, updated);
   }
 
   async deleteKeyword(id: number): Promise<boolean> {
@@ -176,6 +193,12 @@ export class MemStorage implements IStorage {
       smartblockStatus: insertMeasurement.smartblockStatus,
       smartblockConfidence: insertMeasurement.smartblockConfidence ?? null,
       smartblockDetails: insertMeasurement.smartblockDetails ?? null,
+      isVisibleInSearch: insertMeasurement.isVisibleInSearch ?? null,
+      hiddenReason: insertMeasurement.hiddenReason ?? null,
+      hiddenReasonCategory: insertMeasurement.hiddenReasonCategory ?? null,
+      hiddenReasonDetail: insertMeasurement.hiddenReasonDetail ?? null,
+      detectionMethod: insertMeasurement.detectionMethod ?? null,
+      recoveryEstimate: insertMeasurement.recoveryEstimate ?? null,
       blogTabRank: insertMeasurement.blogTabRank ?? null,
       searchVolumeAvg: insertMeasurement.searchVolumeAvg ?? null,
       durationMs: insertMeasurement.durationMs ?? null,
@@ -309,6 +332,16 @@ class PostgresStorage implements IStorage {
       .where(eq(keywords.id, id))
       .returning();
     return result[0];
+  }
+
+  async updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null): Promise<void> {
+    await this.db.update(keywords)
+      .set({ 
+        documentCount, 
+        competitionRate,
+        updatedAt: new Date() 
+      })
+      .where(eq(keywords.id, id));
   }
 
   async deleteKeyword(id: number): Promise<boolean> {

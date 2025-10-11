@@ -31,6 +31,8 @@ export const keywords = pgTable("keywords", {
   targetUrl: text("target_url").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   measurementInterval: text("measurement_interval").notNull().default("24h"), // 1h, 6h, 12h, 24h
+  documentCount: bigint("document_count", { mode: "number" }), // 네이버 검색 API에서 조회한 문서 수
+  competitionRate: decimal("competition_rate", { precision: 10, scale: 2 }), // 경쟁률 = 문서수 / 월간검색량
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
