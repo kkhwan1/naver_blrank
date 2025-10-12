@@ -59,6 +59,29 @@ export const measurements = pgTable("measurements", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const groups = pgTable("groups", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  color: text("color").notNull().default("#3b82f6"), // Tailwind blue-500
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const keywordGroups = pgTable("keyword_groups", {
+  keywordId: integer("keyword_id").notNull().references(() => keywords.id, { onDelete: "cascade" }),
+  groupId: integer("group_id").notNull().references(() => groups.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userSettings = pgTable("user_settings", {
+  userId: varchar("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  navigationItems: jsonb("navigation_items").notNull().default(sql`'[]'::jsonb`), // Array of visible nav items
+  preferences: jsonb("preferences").notNull().default(sql`'{}'::jsonb`), // Other user preferences
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertKeywordSchema = createInsertSchema(keywords).omit({
   id: true,
   createdAt: true,
@@ -84,9 +107,33 @@ export const insertUserSchema = createInsertSchema(users).omit({
   role: z.enum(["admin", "user"]).optional(),
 });
 
+export const insertGroupSchema = createInsertSchema(groups).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(1, "그룹 이름을 입력해주세요"),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i, "올바른 색상 코드를 입력해주세요").optional(),
+});
+
+export const insertKeywordGroupSchema = createInsertSchema(keywordGroups).omit({
+  createdAt: true,
+});
+
+export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
+  userId: true,
+  updatedAt: true,
+});
+
 export type InsertKeyword = z.infer<typeof insertKeywordSchema>;
 export type Keyword = typeof keywords.$inferSelect;
 export type InsertMeasurement = z.infer<typeof insertMeasurementSchema>;
 export type Measurement = typeof measurements.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+export type Group = typeof groups.$inferSelect;
+export type InsertKeywordGroup = z.infer<typeof insertKeywordGroupSchema>;
+export type KeywordGroup = typeof keywordGroups.$inferSelect;
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+export type UserSettings = typeof userSettings.$inferSelect;

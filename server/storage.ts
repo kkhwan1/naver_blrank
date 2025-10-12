@@ -1,8 +1,16 @@
-import { type User, type InsertUser, type Keyword, type InsertKeyword, type Measurement, type InsertMeasurement, keywords, measurements, users } from "@shared/schema";
+import { 
+  type User, type InsertUser, 
+  type Keyword, type InsertKeyword, 
+  type Measurement, type InsertMeasurement,
+  type Group, type InsertGroup,
+  type KeywordGroup, type InsertKeywordGroup,
+  type UserSettings, type InsertUserSettings,
+  keywords, measurements, users, groups, keywordGroups, userSettings 
+} from "@shared/schema";
 import { randomUUID } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 
 export interface UserStats {
   user: User;
@@ -31,21 +39,43 @@ export interface IStorage {
   createMeasurement(measurement: InsertMeasurement): Promise<Measurement>;
   getLatestMeasurements(): Promise<Map<number, Measurement>>;
   getPreviousMeasurements(): Promise<Map<number, Measurement>>;
+  
+  getGroups(userId: string): Promise<Group[]>;
+  getGroup(id: number): Promise<Group | undefined>;
+  createGroup(group: InsertGroup): Promise<Group>;
+  updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined>;
+  deleteGroup(id: number): Promise<boolean>;
+  
+  getKeywordsByGroup(groupId: number): Promise<Keyword[]>;
+  addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup>;
+  removeKeywordFromGroup(keywordId: number, groupId: number): Promise<boolean>;
+  getGroupsForKeyword(keywordId: number): Promise<Group[]>;
+  
+  getUserSettings(userId: string): Promise<UserSettings | undefined>;
+  updateUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private keywords: Map<number, Keyword>;
   private measurements: Map<number, Measurement>;
+  private groups: Map<number, Group>;
+  private keywordGroupRelations: Map<string, KeywordGroup>;
+  private settings: Map<string, UserSettings>;
   private nextKeywordId: number;
   private nextMeasurementId: number;
+  private nextGroupId: number;
 
   constructor() {
     this.users = new Map();
     this.keywords = new Map();
     this.measurements = new Map();
+    this.groups = new Map();
+    this.keywordGroupRelations = new Map();
+    this.settings = new Map();
     this.nextKeywordId = 1;
     this.nextMeasurementId = 1;
+    this.nextGroupId = 1;
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -240,6 +270,105 @@ export class MemStorage implements IStorage {
     
     return previous;
   }
+
+  async getGroups(userId: string): Promise<Group[]> {
+    return Array.from(this.groups.values())
+      .filter(g => g.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getGroup(id: number): Promise<Group | undefined> {
+    return this.groups.get(id);
+  }
+
+  async createGroup(insertGroup: InsertGroup): Promise<Group> {
+    const id = this.nextGroupId++;
+    const now = new Date();
+    const group: Group = {
+      id,
+      userId: insertGroup.userId,
+      name: insertGroup.name,
+      description: insertGroup.description ?? null,
+      color: insertGroup.color ?? "#3b82f6",
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.groups.set(id, group);
+    return group;
+  }
+
+  async updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined> {
+    const group = this.groups.get(id);
+    if (!group) return undefined;
+    
+    const updated: Group = {
+      ...group,
+      ...data,
+      updatedAt: new Date(),
+    };
+    this.groups.set(id, updated);
+    return updated;
+  }
+
+  async deleteGroup(id: number): Promise<boolean> {
+    const deleted = this.groups.delete(id);
+    if (deleted) {
+      Array.from(this.keywordGroupRelations.keys())
+        .filter(key => key.endsWith(`-${id}`))
+        .forEach(key => this.keywordGroupRelations.delete(key));
+    }
+    return deleted;
+  }
+
+  async getKeywordsByGroup(groupId: number): Promise<Keyword[]> {
+    const keywordIds = Array.from(this.keywordGroupRelations.values())
+      .filter(rel => rel.groupId === groupId)
+      .map(rel => rel.keywordId);
+    
+    return Array.from(this.keywords.values())
+      .filter(k => keywordIds.includes(k.id));
+  }
+
+  async addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup> {
+    const key = `${keywordId}-${groupId}`;
+    const relation: KeywordGroup = {
+      keywordId,
+      groupId,
+      createdAt: new Date(),
+    };
+    this.keywordGroupRelations.set(key, relation);
+    return relation;
+  }
+
+  async removeKeywordFromGroup(keywordId: number, groupId: number): Promise<boolean> {
+    const key = `${keywordId}-${groupId}`;
+    return this.keywordGroupRelations.delete(key);
+  }
+
+  async getGroupsForKeyword(keywordId: number): Promise<Group[]> {
+    const groupIds = Array.from(this.keywordGroupRelations.values())
+      .filter(rel => rel.keywordId === keywordId)
+      .map(rel => rel.groupId);
+    
+    return Array.from(this.groups.values())
+      .filter(g => groupIds.includes(g.id));
+  }
+
+  async getUserSettings(userId: string): Promise<UserSettings | undefined> {
+    return this.settings.get(userId);
+  }
+
+  async updateUserSettings(userId: string, settingsData: Partial<InsertUserSettings>): Promise<UserSettings> {
+    const existing = this.settings.get(userId);
+    const settings: UserSettings = {
+      userId,
+      navigationItems: settingsData.navigationItems ?? existing?.navigationItems ?? [],
+      preferences: settingsData.preferences ?? existing?.preferences ?? {},
+      updatedAt: new Date(),
+    };
+    this.settings.set(userId, settings);
+    return settings;
+  }
 }
 
 class PostgresStorage implements IStorage {
@@ -409,6 +538,100 @@ class PostgresStorage implements IStorage {
     });
     
     return previous;
+  }
+
+  async getGroups(userId: string): Promise<Group[]> {
+    return await this.db.select().from(groups)
+      .where(eq(groups.userId, userId))
+      .orderBy(desc(groups.createdAt));
+  }
+
+  async getGroup(id: number): Promise<Group | undefined> {
+    const result = await this.db.select().from(groups).where(eq(groups.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createGroup(insertGroup: InsertGroup): Promise<Group> {
+    const result = await this.db.insert(groups).values(insertGroup).returning();
+    return result[0];
+  }
+
+  async updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined> {
+    const result = await this.db.update(groups)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(groups.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteGroup(id: number): Promise<boolean> {
+    const result = await this.db.delete(groups).where(eq(groups.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getKeywordsByGroup(groupId: number): Promise<Keyword[]> {
+    const relations = await this.db.select()
+      .from(keywordGroups)
+      .where(eq(keywordGroups.groupId, groupId));
+    
+    if (relations.length === 0) return [];
+    
+    const keywordIds = relations.map(r => r.keywordId);
+    return await this.db.select().from(keywords)
+      .where(inArray(keywords.id, keywordIds));
+  }
+
+  async addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup> {
+    const result = await this.db.insert(keywordGroups)
+      .values({ keywordId, groupId })
+      .returning();
+    return result[0];
+  }
+
+  async removeKeywordFromGroup(keywordId: number, groupId: number): Promise<boolean> {
+    const result = await this.db.delete(keywordGroups)
+      .where(and(
+        eq(keywordGroups.keywordId, keywordId),
+        eq(keywordGroups.groupId, groupId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getGroupsForKeyword(keywordId: number): Promise<Group[]> {
+    const relations = await this.db.select()
+      .from(keywordGroups)
+      .where(eq(keywordGroups.keywordId, keywordId));
+    
+    if (relations.length === 0) return [];
+    
+    const groupIds = relations.map(r => r.groupId);
+    return await this.db.select().from(groups)
+      .where(inArray(groups.id, groupIds));
+  }
+
+  async getUserSettings(userId: string): Promise<UserSettings | undefined> {
+    const result = await this.db.select().from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+    return result[0];
+  }
+
+  async updateUserSettings(userId: string, settingsData: Partial<InsertUserSettings>): Promise<UserSettings> {
+    const existing = await this.getUserSettings(userId);
+    
+    if (existing) {
+      const result = await this.db.update(userSettings)
+        .set({ ...settingsData, updatedAt: new Date() })
+        .where(eq(userSettings.userId, userId))
+        .returning();
+      return result[0];
+    } else {
+      const result = await this.db.insert(userSettings)
+        .values({ userId, ...settingsData })
+        .returning();
+      return result[0];
+    }
   }
 }
 

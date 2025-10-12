@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertKeywordSchema, insertUserSchema } from "@shared/schema";
+import { insertKeywordSchema, insertUserSchema, insertGroupSchema, insertKeywordGroupSchema, insertUserSettingsSchema } from "@shared/schema";
 import { NaverAPIClient } from "./naver-client";
 import { SmartBlockParser } from "./smartblock-parser";
 import { NaverHTMLParser } from "./html-parser";
@@ -841,6 +841,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         error: error instanceof Error ? error.message : '경쟁률 계산 중 오류가 발생했습니다'
       });
+    }
+  });
+
+  // ===== 그룹 관리 API =====
+  // 그룹 목록 조회
+  app.get('/api/groups', requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const groups = await storage.getGroups(userId);
+      res.json(groups);
+    } catch (error) {
+      console.error('그룹 목록 조회 오류:', error);
+      res.status(500).json({ error: '그룹 목록 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 그룹 생성
+  app.post('/api/groups', requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const validated = insertGroupSchema.parse({ ...req.body, userId });
+      const group = await storage.createGroup(validated);
+      res.status(201).json(group);
+    } catch (error) {
+      console.error('그룹 생성 오류:', error);
+      res.status(500).json({ error: '그룹 생성 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 그룹 수정
+  app.put('/api/groups/:id', requireAuth, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const updated = await storage.updateGroup(groupId, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: '그룹을 찾을 수 없습니다' });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error('그룹 수정 오류:', error);
+      res.status(500).json({ error: '그룹 수정 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 그룹 삭제
+  app.delete('/api/groups/:id', requireAuth, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const deleted = await storage.deleteGroup(groupId);
+      if (!deleted) {
+        return res.status(404).json({ error: '그룹을 찾을 수 없습니다' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('그룹 삭제 오류:', error);
+      res.status(500).json({ error: '그룹 삭제 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 그룹에 속한 키워드 조회
+  app.get('/api/groups/:id/keywords', requireAuth, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const keywords = await storage.getKeywordsByGroup(groupId);
+      res.json(keywords);
+    } catch (error) {
+      console.error('그룹 키워드 조회 오류:', error);
+      res.status(500).json({ error: '그룹 키워드 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 키워드를 그룹에 추가
+  app.post('/api/keywords/:keywordId/groups/:groupId', requireAuth, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.keywordId);
+      const groupId = parseInt(req.params.groupId);
+      const relation = await storage.addKeywordToGroup(keywordId, groupId);
+      res.status(201).json(relation);
+    } catch (error) {
+      console.error('키워드-그룹 연결 오류:', error);
+      res.status(500).json({ error: '키워드를 그룹에 추가하는 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 그룹에서 키워드 제거
+  app.delete('/api/keywords/:keywordId/groups/:groupId', requireAuth, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.keywordId);
+      const groupId = parseInt(req.params.groupId);
+      const removed = await storage.removeKeywordFromGroup(keywordId, groupId);
+      if (!removed) {
+        return res.status(404).json({ error: '해당 키워드-그룹 연결을 찾을 수 없습니다' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('키워드-그룹 연결 해제 오류:', error);
+      res.status(500).json({ error: '그룹에서 키워드를 제거하는 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 키워드가 속한 그룹 목록 조회
+  app.get('/api/keywords/:id/groups', requireAuth, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const groups = await storage.getGroupsForKeyword(keywordId);
+      res.json(groups);
+    } catch (error) {
+      console.error('키워드 그룹 조회 오류:', error);
+      res.status(500).json({ error: '키워드 그룹 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  // ===== 사용자 설정 API =====
+  // 사용자 설정 조회
+  app.get('/api/settings', requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const settings = await storage.getUserSettings(userId);
+      res.json(settings || { navigationItems: [], preferences: {} });
+    } catch (error) {
+      console.error('설정 조회 오류:', error);
+      res.status(500).json({ error: '설정 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 사용자 설정 업데이트
+  app.put('/api/settings', requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const settings = await storage.updateUserSettings(userId, req.body);
+      res.json(settings);
+    } catch (error) {
+      console.error('설정 업데이트 오류:', error);
+      res.status(500).json({ error: '설정 업데이트 중 오류가 발생했습니다' });
     }
   });
 
