@@ -32,7 +32,8 @@ import {
 import StatusDot from './StatusDot';
 import RankBadge from './RankBadge';
 import ChangeIndicator from './ChangeIndicator';
-import { MoreVertical, ExternalLink, Info, LineChart, Trash2, FileText, TrendingUp } from 'lucide-react';
+import { MoreVertical, ExternalLink, Info, LineChart, Trash2, FileText, TrendingUp, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface SmartblockCategory {
   categoryName: string;
@@ -73,9 +74,18 @@ interface KeywordTableProps {
 export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDelete, onRemeasure, filterBy = 'all' }: KeywordTableProps) {
   const [selectedFilter, setSelectedFilter] = useState(filterBy);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const itemsPerPage = 14;
 
   const filteredKeywords = keywords.filter((keyword) => {
+    // 검색 필터
+    const matchesSearch = searchQuery === '' || 
+      keyword.keyword.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      keyword.targetUrl.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // 상태 필터
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'up') return keyword.change > 0;
     if (selectedFilter === 'down') return keyword.change < 0;
@@ -109,8 +119,8 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
           <Button
             variant={selectedFilter === 'all' ? 'default' : 'secondary'}
             size="sm"
@@ -144,8 +154,25 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
             유지
           </Button>
         </div>
-        <div className="text-sm text-muted-foreground">
-          총 {filteredKeywords.length}개 키워드
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="키워드 또는 URL 검색..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-9"
+              data-testid="input-search-keywords"
+            />
+          </div>
+          <div className="text-sm text-muted-foreground whitespace-nowrap">
+            {filteredKeywords.length}개
+          </div>
         </div>
       </div>
 
@@ -154,14 +181,14 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
           <TableHeader>
             <TableRow>
               <TableHead className="w-12 whitespace-nowrap">상태</TableHead>
-              <TableHead className="w-[200px] whitespace-nowrap">키워드</TableHead>
-              <TableHead className="text-right whitespace-nowrap">현재 순위</TableHead>
-              <TableHead className="text-right whitespace-nowrap">변동</TableHead>
-              <TableHead className="text-right whitespace-nowrap">월간검색량</TableHead>
-              <TableHead className="text-right whitespace-nowrap">문서수</TableHead>
-              <TableHead className="text-right whitespace-nowrap w-[100px]">경쟁률</TableHead>
-              <TableHead className="whitespace-nowrap">측정주기</TableHead>
-              <TableHead className="whitespace-nowrap">마지막 측정</TableHead>
+              <TableHead className="whitespace-nowrap">키워드</TableHead>
+              <TableHead className="text-right whitespace-nowrap">순위</TableHead>
+              <TableHead className="hidden md:table-cell text-right whitespace-nowrap">변동</TableHead>
+              <TableHead className="hidden lg:table-cell text-right whitespace-nowrap">월간검색량</TableHead>
+              <TableHead className="hidden lg:table-cell text-right whitespace-nowrap">문서수</TableHead>
+              <TableHead className="hidden lg:table-cell text-right whitespace-nowrap w-[100px]">경쟁률</TableHead>
+              <TableHead className="hidden md:table-cell whitespace-nowrap">측정주기</TableHead>
+              <TableHead className="hidden xl:table-cell whitespace-nowrap">마지막 측정</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -239,10 +266,10 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="hidden md:table-cell text-right">
                   <ChangeIndicator change={keyword.change} />
                 </TableCell>
-                <TableCell className="text-right whitespace-nowrap">
+                <TableCell className="hidden lg:table-cell text-right whitespace-nowrap">
                   {keyword.searchVolume !== null && keyword.searchVolume !== undefined ? (
                     <span className="text-sm font-medium">
                       {keyword.searchVolume.toLocaleString()}회
@@ -251,7 +278,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right whitespace-nowrap">
+                <TableCell className="hidden lg:table-cell text-right whitespace-nowrap">
                   {keyword.documentCount !== null && keyword.documentCount !== undefined ? (
                     <div className="flex items-center justify-end gap-1">
                       <FileText className="w-3 h-3 text-muted-foreground" />
@@ -263,7 +290,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right whitespace-nowrap">
+                <TableCell className="hidden lg:table-cell text-right whitespace-nowrap">
                   <div className="flex justify-end min-w-[60px]">
                     {keyword.competitionRate ? (
                       <Badge 
@@ -282,7 +309,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="whitespace-nowrap">
+                <TableCell className="hidden md:table-cell whitespace-nowrap">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -300,7 +327,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     </Badge>
                   </button>
                 </TableCell>
-                <TableCell className="whitespace-nowrap">
+                <TableCell className="hidden xl:table-cell whitespace-nowrap">
                   <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>
                 </TableCell>
                 <TableCell>

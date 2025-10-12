@@ -13,8 +13,16 @@ interface StatCardProps {
 
 export default function StatCard({ title, value, icon: Icon, trend }: StatCardProps) {
   return (
-    <Card className="p-6 hover-elevate" data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
-      <div className="flex items-start justify-between">
+    <Card className="p-3 md:p-6 hover-elevate" data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+      {/* Mobile: Compact centered layout */}
+      <div className="flex md:hidden flex-col items-center justify-center text-center gap-1">
+        <Icon className="w-6 h-6 text-primary mb-1" />
+        <p className="text-2xl font-bold text-foreground">{value}</p>
+        <p className="text-xs text-muted-foreground">{title}</p>
+      </div>
+      
+      {/* Desktop: Original layout */}
+      <div className="hidden md:flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
           <p className="text-4xl font-bold text-foreground">{value}</p>
