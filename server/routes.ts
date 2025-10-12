@@ -912,6 +912,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 그룹에 키워드 추가 (RESTful 방식)
+  app.post('/api/groups/:id/keywords', requireAuth, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      const { keywordId } = req.body;
+      if (!keywordId) {
+        return res.status(400).json({ error: 'keywordId가 필요합니다' });
+      }
+      const relation = await storage.addKeywordToGroup(keywordId, groupId);
+      res.status(201).json(relation);
+    } catch (error) {
+      console.error('그룹에 키워드 추가 오류:', error);
+      res.status(500).json({ error: '그룹에 키워드를 추가하는 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 그룹에서 키워드 제거 (RESTful 방식)
+  app.delete('/api/groups/:groupId/keywords/:keywordId', requireAuth, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.groupId);
+      const keywordId = parseInt(req.params.keywordId);
+      const removed = await storage.removeKeywordFromGroup(keywordId, groupId);
+      if (!removed) {
+        return res.status(404).json({ error: '해당 키워드-그룹 연결을 찾을 수 없습니다' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('그룹에서 키워드 제거 오류:', error);
+      res.status(500).json({ error: '그룹에서 키워드를 제거하는 중 오류가 발생했습니다' });
+    }
+  });
+
   // 키워드를 그룹에 추가
   app.post('/api/keywords/:keywordId/groups/:groupId', requireAuth, async (req, res) => {
     try {
