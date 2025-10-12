@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import StatCard from "@/components/StatCard";
 import type { Keyword, Measurement } from "@shared/schema";
 
 type KeywordWithRank = Keyword & {
@@ -38,6 +39,9 @@ export default function Analytics() {
     .filter(k => k.latestMeasurement?.rankSmartblock)
     .sort((a, b) => (a.latestMeasurement?.rankSmartblock || 999) - (b.latestMeasurement?.rankSmartblock || 999))
     .slice(0, 5);
+  
+  // 1위 키워드 개수
+  const rank1Keywords = keywords.filter(k => k.latestMeasurement?.rankSmartblock === 1).length;
 
   return (
     <div className="h-full overflow-auto">
@@ -56,50 +60,30 @@ export default function Analytics() {
           </TabsList>
 
           <TabsContent value={period} className="space-y-6 mt-6">
-            {/* 통계 요약 */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">전체 키워드</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="stat-total-keywords">{keywords.length}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    활성: {keywords.filter(k => k.isActive).length}개
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">스마트블록 노출</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="stat-smartblock-keywords">
-                    {rankingKeywords.length}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    노출률: {keywords.length > 0 ? Math.round((rankingKeywords.length / keywords.length) * 100) : 0}%
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">평균 순위</CardTitle>
-                  <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold" data-testid="stat-avg-rank">
-                    {rankingKeywords.length > 0
-                      ? (rankingKeywords.reduce((sum, k) => sum + (k.latestMeasurement?.rankSmartblock || 0), 0) / rankingKeywords.length).toFixed(1)
-                      : "-"}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">스마트블록 기준</p>
-                </CardContent>
-              </Card>
+            {/* 통계 요약 - 모바일 4×1, 데스크톱 4칸 */}
+            <div className="grid gap-3 grid-cols-4 md:gap-4 md:grid-cols-4">
+              <StatCard
+                title="전체 키워드"
+                value={keywords.length}
+                icon={Activity}
+              />
+              <StatCard
+                title="스마트블록"
+                value={rankingKeywords.length}
+                icon={TrendingUp}
+              />
+              <StatCard
+                title="1위 키워드"
+                value={rank1Keywords}
+                icon={Target}
+              />
+              <StatCard
+                title="평균 순위"
+                value={rankingKeywords.length > 0
+                  ? (rankingKeywords.reduce((sum, k) => sum + (k.latestMeasurement?.rankSmartblock || 0), 0) / rankingKeywords.length).toFixed(1)
+                  : "-"}
+                icon={TrendingDown}
+              />
             </div>
 
             {/* 순위 변동 차트 */}
@@ -189,50 +173,57 @@ export default function Analytics() {
                 <CardDescription>전체 키워드의 최근 측정 결과</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full" data-testid="table-recent-measurements">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-2 font-medium">키워드</th>
-                        <th className="text-left py-3 px-2 font-medium hidden md:table-cell">URL</th>
-                        <th className="text-center py-3 px-2 font-medium">순위</th>
-                        <th className="text-center py-3 px-2 font-medium hidden sm:table-cell">상태</th>
-                        <th className="text-right py-3 px-2 font-medium">측정 시간</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {keywords.slice(0, 10).map((keyword) => (
-                        <tr key={keyword.id} className="border-b" data-testid={`measurement-row-${keyword.id}`}>
-                          <td className="py-3 px-2">
-                            <div className="font-medium">{keyword.keyword}</div>
-                          </td>
-                          <td className="py-3 px-2 hidden md:table-cell">
-                            <div className="text-sm text-muted-foreground truncate max-w-xs">
-                              {keyword.targetUrl}
-                            </div>
-                          </td>
-                          <td className="py-3 px-2 text-center">
-                            {keyword.latestMeasurement?.rankSmartblock ? (
-                              <span className="font-bold">{keyword.latestMeasurement.rankSmartblock}위</span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-2 text-center hidden sm:table-cell">
-                            <span className="text-sm text-muted-foreground">
-                              {keyword.latestMeasurement?.smartblockStatus || "-"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-2 text-right text-sm text-muted-foreground">
-                            {keyword.latestMeasurement?.measuredAt
-                              ? format(new Date(keyword.latestMeasurement.measuredAt), "MM/dd HH:mm", { locale: ko })
-                              : "-"}
-                          </td>
+                {keywords.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full" data-testid="table-recent-measurements">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-3 px-2 font-medium">키워드</th>
+                          <th className="text-left py-3 px-2 font-medium hidden md:table-cell">URL</th>
+                          <th className="text-center py-3 px-2 font-medium">순위</th>
+                          <th className="text-center py-3 px-2 font-medium hidden sm:table-cell">상태</th>
+                          <th className="text-right py-3 px-2 font-medium">측정 시간</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {keywords.slice(0, 10).map((keyword) => (
+                          <tr key={keyword.id} className="border-b" data-testid={`measurement-row-${keyword.id}`}>
+                            <td className="py-3 px-2">
+                              <div className="font-medium">{keyword.keyword}</div>
+                            </td>
+                            <td className="py-3 px-2 hidden md:table-cell">
+                              <div className="text-sm text-muted-foreground truncate max-w-xs">
+                                {keyword.targetUrl}
+                              </div>
+                            </td>
+                            <td className="py-3 px-2 text-center">
+                              {keyword.latestMeasurement?.rankSmartblock ? (
+                                <span className="font-bold">{keyword.latestMeasurement.rankSmartblock}위</span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-2 text-center hidden sm:table-cell">
+                              <span className="text-sm text-muted-foreground">
+                                {keyword.latestMeasurement?.smartblockStatus || "-"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-right text-sm text-muted-foreground">
+                              {keyword.latestMeasurement?.measuredAt
+                                ? format(new Date(keyword.latestMeasurement.measuredAt), "MM/dd HH:mm", { locale: ko })
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-lg mb-2">등록된 키워드가 없습니다</p>
+                    <p className="text-sm">대시보드에서 키워드를 추가해주세요</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
