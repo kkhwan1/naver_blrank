@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
+import { AppLayout } from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
+import Analytics from "@/pages/Analytics";
 import UrlAnalyzer from "@/pages/UrlAnalyzer";
 import AdminDashboard from "@/pages/admin/dashboard";
 import Login from "@/pages/auth/login";
@@ -24,12 +26,23 @@ function Router() {
       </Route>
       <Route path="/">
         <ProtectedRoute>
-          <Dashboard />
+          <AppLayout>
+            <Dashboard />
+          </AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard">
         <ProtectedRoute>
-          <Dashboard />
+          <AppLayout>
+            <Dashboard />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/analytics">
+        <ProtectedRoute>
+          <AppLayout>
+            <Analytics />
+          </AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/analyze">
