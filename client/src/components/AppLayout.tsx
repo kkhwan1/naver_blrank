@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { LayoutDashboard, BarChart3 } from "lucide-react";
+import { LayoutDashboard, BarChart3, FolderOpen, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppLayoutProps {
@@ -22,6 +22,18 @@ export function AppLayout({ children }: AppLayoutProps) {
       label: "통계 분석",
       icon: BarChart3,
       matchPaths: ["/analytics"],
+    },
+    {
+      path: "/groups",
+      label: "그룹 관리",
+      icon: FolderOpen,
+      matchPaths: ["/groups"],
+    },
+    {
+      path: "/settings",
+      label: "설정",
+      icon: Settings,
+      matchPaths: ["/settings"],
     },
   ];
 
@@ -69,7 +81,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* 모바일 하단 네비게이션 (md 미만) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t z-50">
-        <div className="grid grid-cols-2">
+        <div className="grid grid-cols-4">
           {navItems.map((item) => {
             const isActive = item.matchPaths.includes(location);
             return (

@@ -9,6 +9,8 @@ import { AdminRoute } from "@/components/AdminRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
+import Groups from "@/pages/Groups";
+import Settings from "@/pages/Settings";
 import UrlAnalyzer from "@/pages/UrlAnalyzer";
 import AdminDashboard from "@/pages/admin/dashboard";
 import Login from "@/pages/auth/login";
@@ -42,6 +44,20 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <Analytics />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/groups">
+        <ProtectedRoute>
+          <AppLayout>
+            <Groups />
+          </AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute>
+          <AppLayout>
+            <Settings />
           </AppLayout>
         </ProtectedRoute>
       </Route>
