@@ -93,37 +93,37 @@ export default function Analytics() {
                 <CardDescription>최근 측정된 스마트블록 순위</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]" data-testid="chart-rank-trend">
+                <div className="max-h-[400px] overflow-y-auto" data-testid="chart-rank-trend">
                   {rankingKeywords.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
                       {rankingKeywords.slice(0, 10).map((keyword) => (
-                        <div key={keyword.id} className="flex items-center gap-4">
+                        <div key={keyword.id} className="flex items-center gap-2 p-3 rounded-lg border">
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{keyword.keyword}</div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="font-medium truncate text-sm">{keyword.keyword}</div>
+                            <div className="text-xs text-muted-foreground">
                               {keyword.latestMeasurement?.measuredAt
-                                ? format(new Date(keyword.latestMeasurement.measuredAt), "yyyy-MM-dd HH:mm", { locale: ko })
+                                ? format(new Date(keyword.latestMeasurement.measuredAt), "MM/dd HH:mm", { locale: ko })
                                 : "-"}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="text-xl font-bold">
+                              {keyword.latestMeasurement?.rankSmartblock}위
+                            </div>
                             {keyword.change !== undefined && keyword.change !== 0 && (
                               <span className={cn(
-                                "text-sm",
+                                "text-xs",
                                 keyword.change > 0 ? "text-green-600" : "text-red-600"
                               )}>
                                 {keyword.change > 0 ? "↑" : "↓"} {Math.abs(keyword.change)}
                               </span>
                             )}
-                            <div className="text-2xl font-bold">
-                              {keyword.latestMeasurement?.rankSmartblock}위
-                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="flex items-center justify-center h-32 text-muted-foreground">
                       측정 데이터가 없습니다
                     </div>
                   )}
@@ -138,25 +138,25 @@ export default function Analytics() {
                 <CardDescription>현재 스마트블록에 노출 중인 키워드</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3" data-testid="list-top-keywords">
+                <div className="max-h-[400px] overflow-y-auto" data-testid="list-top-keywords">
                   {topRanking.length > 0 ? (
-                    topRanking.map((keyword) => (
-                      <div
-                        key={keyword.id}
-                        className="flex items-center justify-between p-3 rounded-lg border"
-                        data-testid={`keyword-rank-${keyword.id}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{keyword.keyword}</div>
-                          <div className="text-sm text-muted-foreground truncate">{keyword.targetUrl}</div>
-                        </div>
-                        <div className="ml-4 flex items-center gap-3">
-                          <div className="text-2xl font-bold" data-testid={`rank-${keyword.id}`}>
+                    <div className="grid grid-cols-2 gap-3">
+                      {topRanking.map((keyword) => (
+                        <div
+                          key={keyword.id}
+                          className="flex items-center gap-2 p-3 rounded-lg border"
+                          data-testid={`keyword-rank-${keyword.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate text-sm">{keyword.keyword}</div>
+                            <div className="text-xs text-muted-foreground truncate">{keyword.targetUrl}</div>
+                          </div>
+                          <div className="text-xl font-bold" data-testid={`rank-${keyword.id}`}>
                             {keyword.latestMeasurement?.rankSmartblock}위
                           </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       스마트블록에 노출된 키워드가 없습니다
