@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { TrendingUp, TrendingDown, Activity, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Target, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import StatCard from "@/components/StatCard";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { Keyword, Measurement } from "@shared/schema";
 
 type KeywordWithRank = Keyword & {
@@ -86,83 +88,144 @@ export default function Analytics() {
               />
             </div>
 
-            {/* 순위 변동 차트 */}
+            {/* 순위 분석 - 아코디언 통합 */}
             <Card>
               <CardHeader>
-                <CardTitle>순위 변동 추이</CardTitle>
-                <CardDescription>최근 측정된 스마트블록 순위</CardDescription>
+                <CardTitle>순위 분석</CardTitle>
+                <CardDescription>스마트블록 순위 추이 및 상위 키워드</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="max-h-[400px] overflow-y-auto" data-testid="chart-rank-trend">
-                  {rankingKeywords.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      {rankingKeywords.slice(0, 10).map((keyword) => (
-                        <div key={keyword.id} className="flex items-center gap-2 p-3 rounded-lg border">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate text-sm">{keyword.keyword}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {keyword.latestMeasurement?.measuredAt
-                                ? format(new Date(keyword.latestMeasurement.measuredAt), "MM/dd HH:mm", { locale: ko })
-                                : "-"}
-                            </div>
+                <Accordion type="multiple" className="w-full" data-testid="accordion-rank-analysis">
+                  {/* 순위 변동 추이 */}
+                  <AccordionItem value="trend" data-testid="accordion-item-trend">
+                    <AccordionTrigger className="hover:no-underline" data-testid="trigger-rank-trend">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        <span>순위 변동 추이 ({rankingKeywords.length}개)</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      {rankingKeywords.length > 0 ? (
+                        <div className="space-y-4">
+                          {/* 차트 */}
+                          <div className="h-[250px] w-full" data-testid="chart-rank-trend">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={(() => {
+                                // 유효한 순위 데이터만 필터링
+                                const validKeywords = rankingKeywords
+                                  .filter(k => k.latestMeasurement?.rankSmartblock && k.latestMeasurement.rankSmartblock > 0)
+                                  .slice(0, 10);
+                                
+                                return validKeywords.map((k) => ({
+                                  name: k.keyword.length > 10 ? k.keyword.substring(0, 10) + '...' : k.keyword,
+                                  순위: k.latestMeasurement?.rankSmartblock || null,
+                                  이전순위: k.previousMeasurement?.rankSmartblock || null
+                                }));
+                              })()}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={11} />
+                                <YAxis 
+                                  reversed 
+                                  domain={['dataMin - 1', 'dataMax + 1']} 
+                                  allowDataOverflow={false}
+                                  fontSize={11}
+                                />
+                                <Tooltip />
+                                <Legend />
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="순위" 
+                                  stroke="#3b82f6" 
+                                  strokeWidth={2} 
+                                  dot={{ r: 4 }}
+                                  connectNulls
+                                />
+                                <Line 
+                                  type="monotone" 
+                                  dataKey="이전순위" 
+                                  stroke="#94a3b8" 
+                                  strokeWidth={1} 
+                                  strokeDasharray="5 5"
+                                  connectNulls
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="text-xl font-bold">
-                              {keyword.latestMeasurement?.rankSmartblock}위
-                            </div>
-                            {keyword.change !== undefined && keyword.change !== 0 && (
-                              <span className={cn(
-                                "text-xs",
-                                keyword.change > 0 ? "text-green-600" : "text-red-600"
-                              )}>
-                                {keyword.change > 0 ? "↑" : "↓"} {Math.abs(keyword.change)}
-                              </span>
-                            )}
+                          
+                          {/* 키워드 리스트 */}
+                          <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto">
+                            {rankingKeywords.slice(0, 10).map((keyword) => (
+                              <div key={keyword.id} className="flex items-center gap-2 p-3 rounded-lg border">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium truncate text-sm">{keyword.keyword}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {keyword.latestMeasurement?.measuredAt
+                                      ? format(new Date(keyword.latestMeasurement.measuredAt), "MM/dd HH:mm", { locale: ko })
+                                      : "-"}
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="text-xl font-bold">
+                                    {keyword.latestMeasurement?.rankSmartblock}위
+                                  </div>
+                                  {keyword.change !== undefined && keyword.change !== 0 && (
+                                    <span className={cn(
+                                      "text-xs",
+                                      keyword.change > 0 ? "text-green-600" : "text-red-600"
+                                    )}>
+                                      {keyword.change > 0 ? "↑" : "↓"} {Math.abs(keyword.change)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-32 text-muted-foreground">
-                      측정 데이터가 없습니다
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                      ) : (
+                        <div className="flex items-center justify-center h-32 text-muted-foreground">
+                          측정 데이터가 없습니다
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
 
-            {/* 상위 순위 키워드 */}
-            <Card>
-              <CardHeader>
-                <CardTitle>스마트블록 상위 순위</CardTitle>
-                <CardDescription>현재 스마트블록에 노출 중인 키워드</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-[400px] overflow-y-auto" data-testid="list-top-keywords">
-                  {topRanking.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      {topRanking.map((keyword) => (
-                        <div
-                          key={keyword.id}
-                          className="flex items-center gap-2 p-3 rounded-lg border"
-                          data-testid={`keyword-rank-${keyword.id}`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate text-sm">{keyword.keyword}</div>
-                            <div className="text-xs text-muted-foreground truncate">{keyword.targetUrl}</div>
+                  {/* 스마트블록 상위 순위 */}
+                  <AccordionItem value="top-ranking" data-testid="accordion-item-top">
+                    <AccordionTrigger className="hover:no-underline" data-testid="trigger-top-ranking">
+                      <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4" />
+                        <span>스마트블록 상위 순위 (Top {topRanking.length})</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="max-h-[400px] overflow-y-auto" data-testid="list-top-keywords">
+                        {topRanking.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            {topRanking.map((keyword) => (
+                              <div
+                                key={keyword.id}
+                                className="flex items-center gap-2 p-3 rounded-lg border"
+                                data-testid={`keyword-rank-${keyword.id}`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium truncate text-sm">{keyword.keyword}</div>
+                                  <div className="text-xs text-muted-foreground truncate">{keyword.targetUrl}</div>
+                                </div>
+                                <div className="text-xl font-bold" data-testid={`rank-${keyword.id}`}>
+                                  {keyword.latestMeasurement?.rankSmartblock}위
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <div className="text-xl font-bold" data-testid={`rank-${keyword.id}`}>
-                            {keyword.latestMeasurement?.rankSmartblock}위
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            스마트블록에 노출된 키워드가 없습니다
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      스마트블록에 노출된 키워드가 없습니다
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
 
