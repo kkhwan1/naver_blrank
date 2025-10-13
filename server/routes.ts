@@ -265,6 +265,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           competitionRate: keyword.competitionRate,
           createdAt: keyword.createdAt,
           isActive: keyword.isActive,
+          latestMeasurement: measurement || null,
+          previousMeasurement: previousMeasurement || null,
         };
       });
 
