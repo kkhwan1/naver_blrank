@@ -16,7 +16,7 @@ The frontend is built with React 18+ and Vite, utilizing Wouter for routing. UI 
 
 ### Backend Architecture
 
-The backend operates on Node.js with Express.js and TypeScript, using tsx for development and esbuild for production bundling. It exposes RESTful API endpoints for managing keywords and initiating measurements. Data storage is primarily PostgreSQL (via Neon/Replit) managed by Drizzle ORM, with an in-memory fallback. A key component is the HTML parser, which accurately detects Smart Block rankings using the `fds-comps-footer-more-subject` CSS selector, offering superior accuracy and performance compared to the less reliable SerpAPI integration. An automated scheduling system based on node-cron allows for configurable measurement intervals (1h, 6h, 12h, 24h) per keyword, with graceful lifecycle management.
+The backend operates on Node.js with Express.js and TypeScript, using tsx for development and esbuild for production bundling. It exposes RESTful API endpoints for managing keywords and initiating measurements. Data storage is PostgreSQL via **Supabase** (Seoul region, ap-northeast-2) managed by Drizzle ORM, with an in-memory fallback. The system uses **postgres** package driver with Supabase Session pooler (port 5432) for IPv4 compatibility and prepared statements support. Session storage uses memorystore for development (not production-ready). A key component is the HTML parser, which accurately detects Smart Block rankings using the `fds-comps-footer-more-subject` CSS selector, offering superior accuracy and performance compared to the less reliable SerpAPI integration. An automated scheduling system based on node-cron allows for configurable measurement intervals (1h, 6h, 12h, 24h) per keyword, with graceful lifecycle management.
 
 ### Data Models
 
@@ -32,6 +32,24 @@ The `measurements` table records:
 The project uses a monorepo structure with shared TypeScript types between the frontend and backend. Component design follows atomic principles, leveraging shadcn/ui for consistency and accessibility. Vite and esbuild are used for efficient build processes. The primary Smart Block detection method is direct HTML parsing with Cheerio due to its 100% accuracy for rank 1-3 detection and superior performance. SerpAPI is maintained for fallback/comparison but is not recommended for production Smart Block tracking.
 
 ## Recent Changes (October 2025)
+
+### Database Migration to Supabase (✅ Completed - October 14, 2025)
+- **Migration**: Successfully migrated from Neon PostgreSQL to **Supabase PostgreSQL** (Seoul region, ap-northeast-2)
+- **Connection Details**:
+  - Host: `aws-1-ap-northeast-2.pooler.supabase.com`
+  - Connection mode: **Session pooler** (port 5432)
+  - Driver: `postgres` package (replaced `@neondatabase/serverless`)
+  - Prepared statements: **Enabled** (Session pooler supports prepared statements)
+- **Session Storage**: Changed from `connect-pg-simple` to `memorystore` (temporary solution for development)
+- **Schema Migration**: Successfully applied complete database schema using `npm run db:push`
+  - Tables created: users, keywords, measurements, groups, keyword_groups, user_settings
+  - All existing features working: authentication, keyword tracking, measurements, hidden reason classification
+- **Testing**: Verified all functionality with test keyword "바겐슈타이거"
+  - ✅ User authentication
+  - ✅ Keyword creation
+  - ✅ HTML parser measurements
+  - ✅ Smart Block detection
+  - ✅ Competition analysis ready
 
 ### 통합검색 이탈 감지 기능 (✅ Completed - October 2025)
 **핵심 요구사항**: 스마트블록 순위는 있지만 통합검색에서 주제어 롤링으로 실제 노출되지 않을 때 빨간색 경고 표시
@@ -118,7 +136,7 @@ Future enhancements include:
 - **React Hook Form**
 - **Zod**
 - **Drizzle ORM**
-- **@neondatabase/serverless**
+- **postgres** (PostgreSQL driver for Supabase)
 
 ### External Services & APIs
 - **SerpAPI** (for general search result scraping, less reliable for Smart Block)
@@ -134,7 +152,7 @@ Future enhancements include:
 - **node-cron**
 
 ### Database
-- **PostgreSQL** (via Neon)
+- **PostgreSQL** (via Supabase, Seoul region)
 
 ### Replit-Specific
 - **@replit/vite-plugin-runtime-error-modal**

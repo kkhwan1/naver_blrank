@@ -375,7 +375,7 @@ class PostgresStorage implements IStorage {
   private db;
 
   constructor() {
-    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
+    const client = postgres(process.env.DATABASE_URL!);
     this.db = drizzle(client);
   }
 
