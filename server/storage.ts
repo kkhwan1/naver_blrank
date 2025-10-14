@@ -8,8 +8,8 @@ import {
   keywords, measurements, users, groups, keywordGroups, userSettings 
 } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { eq, desc, inArray, and } from "drizzle-orm";
 
 export interface UserStats {
@@ -375,8 +375,8 @@ class PostgresStorage implements IStorage {
   private db;
 
   constructor() {
-    const sql = neon(process.env.DATABASE_URL!);
-    this.db = drizzle(sql);
+    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
+    this.db = drizzle(client);
   }
 
   async getUser(id: string): Promise<User | undefined> {
