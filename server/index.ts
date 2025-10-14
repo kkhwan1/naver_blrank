@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
+import createMemoryStore from "memorystore";
 import passport from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -11,13 +11,12 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration
-const PgSession = connectPgSimple(session);
+// Session configuration with memory store (Supabase compatible)
+const MemoryStore = createMemoryStore(session);
 app.use(
   session({
-    store: new PgSession({
-      conString: process.env.DATABASE_URL,
-      tableName: "sessions",
+    store: new MemoryStore({
+      checkPeriod: 86400000, // 24 hours
     }),
     secret: process.env.SESSION_SECRET || "naver-blog-rank-tracker-secret-key",
     resave: false,
