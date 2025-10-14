@@ -33,11 +33,32 @@ The project uses a monorepo structure with shared TypeScript types between the f
 
 ## Recent Changes (October 2025)
 
+### 통합검색 이탈 감지 기능 (✅ Completed - October 2025)
+**핵심 요구사항**: 스마트블록 순위는 있지만 통합검색에서 주제어 롤링으로 실제 노출되지 않을 때 빨간색 경고 표시
+
+- **Backend Detection**: 
+  - HTML Parser의 CSS visibility 체크 (display:none, visibility:hidden, opacity:0 등)
+  - `RANKED_BUT_HIDDEN` 상태 감지: 순위는 있지만 실제로 숨겨진 경우
+  - `isVisibleInSearch` 필드로 통합검색 실제 노출 여부 추적
+  
+- **UI Implementation**:
+  - **StatusDot**: 빨간색 + 깜빡이는 애니메이션 (`bg-destructive animate-pulse`)
+  - **Tooltip**: "통합검색 이탈" 레이블로 상태 명확히 표시
+  - **MeasurementDetailDialog**: "통합검색 이탈 감지" 경고 배너 with 카테고리별 아이콘/색상
+  
+- **Hidden Reason Classification**: 
+  - 품질 필터 (Quality Filter) - Shield icon, amber color
+  - 스팸 의심 (Spam Suspected) - Ban icon, red color
+  - 일시적 검토 (Temporary Review) - Clock icon, blue color
+  - 정책 위반 (Policy Violation) - FileWarning icon, red color
+  - 알 수 없음 (Unknown) - AlertTriangle icon
+  
+- **User Guidance**: 복구 예상 시간 및 조치 안내 메시지 제공
+
 ### Phase 2: Hidden Reason Classification System (✅ Completed)
-- **Data Model Extension**: Added `hiddenReason`, `hiddenReasonCategory`, `hiddenReasonDetail`, `detectionMethod`, `recoveryEstimate`, `actionGuide` fields to measurements table
+- **Data Model Extension**: Added `hiddenReason`, `hiddenReasonCategory`, `hiddenReasonDetail`, `detectionMethod`, `recoveryEstimate` fields to measurements table
 - **Classification Engine**: Created `hidden-reason-classifier.ts` to translate technical CSS hiding reasons into user-friendly business categories
-- **Category System**: 품질 필터 (Quality Filter), 스팸 의심 (Spam Suspected), 일시적 검토 (Temporary Review), 정책 위반 (Policy Violation), 알 수 없음 (Unknown)
-- **UI Implementation**: Category-specific badges with icons (Shield, AlertTriangle, Clock), color-coded alerts, recovery time estimates, and actionable guidance
+- **Category System**: 품질 필터, 스팸 의심, 일시적 검토, 정책 위반, 알 수 없음
 - **Bug Fix**: Standardized category naming from underscores to spaces (품질_필터 → 품질 필터) to match frontend expectations
 
 ### Competition Analysis Feature (✅ Completed - October 2025)
