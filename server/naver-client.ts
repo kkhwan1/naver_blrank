@@ -9,6 +9,8 @@ export interface BlogResult {
   blogName?: string; // 블로그명
   author?: string; // 발행자명
   publishedDate?: string; // 발행일 (예: "5일 전", "2024.01.15")
+  description?: string; // 블로그 포스트 요약 (1줄)
+  imageUrl?: string; // 대표 이미지 URL
 }
 
 export interface SearchResult {
