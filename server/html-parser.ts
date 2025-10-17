@@ -203,6 +203,8 @@ export class NaverHTMLParser {
             blogName: metadata.blogName,
             author: metadata.author,
             publishedDate: metadata.publishedDate,
+            description: metadata.description,
+            imageUrl: metadata.imageUrl,
           });
           
           if (!seenUrls.has(blogUrl)) {
@@ -216,6 +218,8 @@ export class NaverHTMLParser {
               blogName: metadata.blogName,
               author: metadata.author,
               publishedDate: metadata.publishedDate,
+              description: metadata.description,
+              imageUrl: metadata.imageUrl,
             });
           }
         }
@@ -263,6 +267,8 @@ export class NaverHTMLParser {
             blogName: metadata.blogName,
             author: metadata.author,
             publishedDate: metadata.publishedDate,
+            description: metadata.description,
+            imageUrl: metadata.imageUrl,
           });
         }
       }
@@ -361,8 +367,8 @@ export class NaverHTMLParser {
     }
   }
 
-  private extractBlogMetadata($link: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): { blogName?: string; author?: string; publishedDate?: string } {
-    const metadata: { blogName?: string; author?: string; publishedDate?: string } = {};
+  private extractBlogMetadata($link: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): { blogName?: string; author?: string; publishedDate?: string; description?: string; imageUrl?: string } {
+    const metadata: { blogName?: string; author?: string; publishedDate?: string; description?: string; imageUrl?: string } = {};
     
     try {
       // 스마트블록 카드 레벨까지 올라가기 (li.bx, div[data-cr-area*="blog"], article 등)
@@ -499,9 +505,67 @@ export class NaverHTMLParser {
         }
       }
       
+      // 요약문(description) 추출
+      // 패턴 1: 네이버 특유의 설명 클래스
+      const $description = $card.find('.dsc_txt, .api_txt_lines, .total_wrap, .detail_txt, .fds-ugc-block-body, [class*="dsc"], [class*="desc"]').first();
+      if ($description.length > 0) {
+        const descText = $description.text().trim();
+        // 요약문은 보통 20자 이상, 300자 이하
+        if (descText.length >= 20 && descText.length <= 300) {
+          metadata.description = descText;
+        }
+      }
+      
+      // 패턴 2: 카드 내 p 태그에서 가장 긴 텍스트 추출
+      if (!metadata.description) {
+        const $paragraphs = $card.find('p, div[class*="text"], div[class*="content"]').filter((i, el) => {
+          const text = $(el).text().trim();
+          return text.length >= 20 && 
+                 text.length <= 300 && 
+                 text !== $link.text().trim() &&
+                 !text.includes('http') &&
+                 text !== metadata.publishedDate;
+        });
+        
+        if ($paragraphs.length > 0) {
+          // 가장 긴 텍스트를 요약문으로
+          let longestText = '';
+          $paragraphs.each((i, el) => {
+            const text = $(el).text().trim();
+            if (text.length > longestText.length) {
+              longestText = text;
+            }
+          });
+          if (longestText) {
+            metadata.description = longestText;
+          }
+        }
+      }
+      
+      // 이미지(imageUrl) 추출
+      // 패턴 1: 카드 내 첫 번째 img 태그 (가장 신뢰도 높음)
+      const $image = $card.find('img').first();
+      if ($image.length > 0) {
+        const imgSrc = $image.attr('src') || $image.attr('data-src') || $image.attr('data-lazy-src');
+        if (imgSrc && imgSrc.startsWith('http')) {
+          metadata.imageUrl = imgSrc;
+        }
+      }
+      
+      // 패턴 2: 썸네일 클래스를 가진 이미지
+      if (!metadata.imageUrl) {
+        const $thumbnail = $card.find('[class*="thumb"], [class*="thumbnail"], [class*="img"]').find('img').first();
+        if ($thumbnail.length > 0) {
+          const imgSrc = $thumbnail.attr('src') || $thumbnail.attr('data-src');
+          if (imgSrc && imgSrc.startsWith('http')) {
+            metadata.imageUrl = imgSrc;
+          }
+        }
+      }
+      
       // 디버그 로그 (개발 환경에서만)
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📝 메타정보 추출: blogName="${metadata.blogName}", author="${metadata.author}", date="${metadata.publishedDate}"`);
+        console.log(`📝 메타정보 추출: blogName="${metadata.blogName}", author="${metadata.author}", date="${metadata.publishedDate}", desc="${metadata.description?.substring(0, 30)}...", img="${metadata.imageUrl?.substring(0, 50)}..."`);
       }
       
     } catch (error) {
