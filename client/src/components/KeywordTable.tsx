@@ -183,12 +183,12 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
               <TableHead className="w-12 whitespace-nowrap">상태</TableHead>
               <TableHead className="whitespace-nowrap">키워드</TableHead>
               <TableHead className="text-right whitespace-nowrap">순위</TableHead>
-              <TableHead className="hidden md:table-cell text-right whitespace-nowrap">변동</TableHead>
-              <TableHead className="hidden lg:table-cell text-right whitespace-nowrap">월간검색량</TableHead>
-              <TableHead className="hidden lg:table-cell text-right whitespace-nowrap">문서수</TableHead>
+              <TableHead className="hidden sm:table-cell text-right whitespace-nowrap">변동</TableHead>
+              <TableHead className="hidden md:table-cell text-right whitespace-nowrap">월간검색량</TableHead>
+              <TableHead className="hidden md:table-cell text-right whitespace-nowrap">문서수</TableHead>
               <TableHead className="hidden lg:table-cell text-right whitespace-nowrap w-[100px]">경쟁률</TableHead>
-              <TableHead className="hidden md:table-cell whitespace-nowrap">측정주기</TableHead>
-              <TableHead className="hidden xl:table-cell whitespace-nowrap">마지막 측정</TableHead>
+              <TableHead className="hidden sm:table-cell whitespace-nowrap">측정주기</TableHead>
+              <TableHead className="hidden lg:table-cell whitespace-nowrap">마지막 측정</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -266,10 +266,10 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell text-right">
+                <TableCell className="hidden sm:table-cell text-right">
                   <ChangeIndicator change={keyword.change} />
                 </TableCell>
-                <TableCell className="hidden lg:table-cell text-right whitespace-nowrap">
+                <TableCell className="hidden md:table-cell text-right whitespace-nowrap">
                   {keyword.searchVolume !== null && keyword.searchVolume !== undefined ? (
                     <span className="text-sm font-medium">
                       {keyword.searchVolume.toLocaleString()}회
@@ -278,7 +278,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     <span className="text-sm text-muted-foreground">-</span>
                   )}
                 </TableCell>
-                <TableCell className="hidden lg:table-cell text-right whitespace-nowrap">
+                <TableCell className="hidden md:table-cell text-right whitespace-nowrap">
                   {keyword.documentCount !== null && keyword.documentCount !== undefined ? (
                     <div className="flex items-center justify-end gap-1">
                       <FileText className="w-3 h-3 text-muted-foreground" />
@@ -309,7 +309,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell whitespace-nowrap">
+                <TableCell className="hidden sm:table-cell whitespace-nowrap">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -327,7 +327,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                     </Badge>
                   </button>
                 </TableCell>
-                <TableCell className="hidden xl:table-cell whitespace-nowrap">
+                <TableCell className="hidden lg:table-cell whitespace-nowrap">
                   <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>
                 </TableCell>
                 <TableCell>

@@ -87,6 +87,10 @@ export default function KeywordBlogsTab({ keywordId, keyword }: KeywordBlogsTabP
       </div>
 
       <div className="space-y-3 max-h-[500px] overflow-y-auto">
+        {/* 순위 근거: 네이버 블로그 검색 API의 응답 순서에 따라 1위부터 순차적으로 표시
+            - API는 relevance(정확도순) 또는 date(최신순) 기준으로 정렬된 결과를 반환
+            - 현재는 정확도순(기본값)으로 검색하여, API가 반환한 순서가 곧 네이버의 검색 순위를 의미
+            - idx + 1이 각 블로그의 검색 순위 (1위, 2위, 3위...) */}
         {data.items.map((blog, idx) => (
           <Card key={idx} className="p-4 hover-elevate" data-testid={`blog-item-${idx}`}>
             <div className="space-y-2">
@@ -125,6 +129,7 @@ export default function KeywordBlogsTab({ keywordId, keyword }: KeywordBlogsTabP
                   <Calendar className="w-3 h-3" />
                   <span>{formatDate(blog.postdate)}</span>
                 </div>
+                {/* 순위 표시: API 응답 순서 기준 (idx + 1) */}
                 <Badge variant="outline" className="text-xs">
                   {idx + 1}위
                 </Badge>
