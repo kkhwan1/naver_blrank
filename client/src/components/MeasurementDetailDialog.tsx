@@ -27,6 +27,8 @@ interface SmartblockCategory {
     blogName?: string;
     author?: string;
     publishedDate?: string;
+    description?: string;
+    imageUrl?: string;
   }>;
   message?: string;
 }
@@ -286,7 +288,7 @@ export default function MeasurementDetailDialog({
                       {categories.map((category, idx) => (
                         <div key={idx} className="p-3 border rounded-md space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium">{category.categoryName}</span>
+                            <span className="font-bold text-base">{category.categoryName}</span>
                             <div className="flex items-center gap-2">
                               {category.rank ? (
                                 <Badge variant={category.rank === 1 ? 'default' : 'secondary'}>
@@ -324,9 +326,20 @@ export default function MeasurementDetailDialog({
                                     href={blog.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-start gap-2 text-xs"
+                                    className="flex items-start gap-3 text-xs"
+                                    data-testid={`blog-link-${blogIdx}`}
                                   >
                                     <span className="text-muted-foreground mt-0.5">{blogIdx + 1}.</span>
+                                    
+                                    {blog.imageUrl && (
+                                      <img
+                                        src={blog.imageUrl}
+                                        alt={blog.title || '블로그 썸네일'}
+                                        className="w-16 h-16 object-cover rounded flex-shrink-0"
+                                        data-testid={`blog-image-${blogIdx}`}
+                                      />
+                                    )}
+                                    
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
                                         <span className="truncate font-medium text-foreground hover:text-primary">
@@ -334,6 +347,13 @@ export default function MeasurementDetailDialog({
                                         </span>
                                         <ExternalLink className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
                                       </div>
+                                      
+                                      {blog.description && (
+                                        <p className="mt-1 text-muted-foreground line-clamp-2" data-testid={`blog-description-${blogIdx}`}>
+                                          {blog.description}
+                                        </p>
+                                      )}
+                                      
                                       {(blog.blogName || blog.author || blog.publishedDate) && (
                                         <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                                           {(blog.blogName || blog.author) && (
