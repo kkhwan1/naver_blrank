@@ -192,7 +192,7 @@ export class NaverHTMLParser {
           const visibilityCheck = this.checkElementVisibility($link, $);
           
           // 블로그 메타정보 추출
-          const metadata = this.extractBlogMetadata($link, $);
+          const metadata = this.extractBlogMetadata($link, $, $container);
           
           categoryBlogs.push({
             url: blogUrl,
@@ -256,7 +256,7 @@ export class NaverHTMLParser {
           const visibilityCheck = this.checkElementVisibility($link, $);
           
           // 블로그 메타정보 추출
-          const metadata = this.extractBlogMetadata($link, $);
+          const metadata = this.extractBlogMetadata($link, $, undefined);
           
           blogResults.push({
             url: blogUrl,
@@ -367,12 +367,12 @@ export class NaverHTMLParser {
     }
   }
 
-  private extractBlogMetadata($link: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): { blogName?: string; author?: string; publishedDate?: string; description?: string; imageUrl?: string } {
+  private extractBlogMetadata($link: cheerio.Cheerio<any>, $: cheerio.CheerioAPI, $container?: cheerio.Cheerio<any>): { blogName?: string; author?: string; publishedDate?: string; description?: string; imageUrl?: string } {
     const metadata: { blogName?: string; author?: string; publishedDate?: string; description?: string; imageUrl?: string } = {};
     
     try {
-      // 스마트블록 카드 레벨까지 올라가기 (li.bx, div[data-cr-area*="blog"], article 등)
-      let $card = $link.closest('li.bx, li[class*="blog"], div[data-cr-area*="blog"], article, .item');
+      // 스마트블록 카드 레벨까지 올라가기 - 컨테이너가 제공되면 사용, 아니면 링크에서 탐색
+      let $card = $container || $link.closest('li.bx, li[class*="blog"], div[data-cr-area*="blog"], article, .item');
       
       // 카드를 찾지 못하면 충분히 큰 컨테이너 찾기
       if ($card.length === 0) {
@@ -505,60 +505,70 @@ export class NaverHTMLParser {
         }
       }
       
-      // 요약문(description) 추출
-      // 패턴 1: 네이버 특유의 설명 클래스
-      const $description = $card.find('.dsc_txt, .api_txt_lines, .total_wrap, .detail_txt, .fds-ugc-block-body, [class*="dsc"], [class*="desc"]').first();
-      if ($description.length > 0) {
-        const descText = $description.text().trim();
-        // 요약문은 보통 20자 이상, 300자 이하
-        if (descText.length >= 20 && descText.length <= 300) {
-          metadata.description = descText;
-        }
-      }
+      // 요약문(description) 추출 - 스마트블록 구조에 맞게 개선
+      // 링크의 형제 또는 부모의 형제 요소에서 텍스트 찾기
+      let $descElement = $link.siblings().filter((i, el) => {
+        const text = $(el).text().trim();
+        return text.length >= 15 && text.length <= 500 && text !== $link.text().trim();
+      }).first();
       
-      // 패턴 2: 카드 내 p 태그에서 가장 긴 텍스트 추출
-      if (!metadata.description) {
-        const $paragraphs = $card.find('p, div[class*="text"], div[class*="content"]').filter((i, el) => {
+      // 형제에서 못 찾으면 부모의 형제에서 찾기
+      if ($descElement.length === 0) {
+        $descElement = $link.parent().siblings().filter((i, el) => {
           const text = $(el).text().trim();
-          return text.length >= 20 && 
-                 text.length <= 300 && 
-                 text !== $link.text().trim() &&
-                 !text.includes('http') &&
-                 text !== metadata.publishedDate;
-        });
-        
-        if ($paragraphs.length > 0) {
-          // 가장 긴 텍스트를 요약문으로
-          let longestText = '';
-          $paragraphs.each((i, el) => {
-            const text = $(el).text().trim();
-            if (text.length > longestText.length) {
-              longestText = text;
+          return text.length >= 15 && text.length <= 500 && text !== $link.text().trim();
+        }).first();
+      }
+      
+      // 카드 전체에서 찾기 (마지막 방법)
+      if ($descElement.length === 0) {
+        const allTexts: string[] = [];
+        $card.find('*').each((i, el) => {
+          const $el = $(el);
+          if ($el.children().length === 0) { // 자식이 없는 요소 (leaf 노드)
+            const text = $el.text().trim();
+            if (text.length >= 15 && text.length <= 500 && 
+                text !== $link.text().trim() && 
+                !text.includes('http') &&
+                text !== metadata.publishedDate) {
+              allTexts.push(text);
             }
-          });
-          if (longestText) {
-            metadata.description = longestText;
           }
+        });
+        if (allTexts.length > 0) {
+          // 가장 긴 텍스트를 요약문으로
+          metadata.description = allTexts.reduce((a, b) => a.length > b.length ? a : b);
         }
+      } else {
+        metadata.description = $descElement.text().trim();
       }
       
-      // 이미지(imageUrl) 추출
-      // 패턴 1: 카드 내 첫 번째 img 태그 (가장 신뢰도 높음)
-      const $image = $card.find('img').first();
-      if ($image.length > 0) {
-        const imgSrc = $image.attr('src') || $image.attr('data-src') || $image.attr('data-lazy-src');
-        if (imgSrc && imgSrc.startsWith('http')) {
-          metadata.imageUrl = imgSrc;
-        }
+      // 이미지(imageUrl) 추출 - 스마트블록 구조에 맞게 개선
+      // 링크와 가까운 이미지 우선 (형제 또는 부모의 형제)
+      let $imageElement = $link.siblings('img, [style*="background-image"]').first();
+      
+      if ($imageElement.length === 0) {
+        $imageElement = $link.parent().siblings().find('img').first();
       }
       
-      // 패턴 2: 썸네일 클래스를 가진 이미지
-      if (!metadata.imageUrl) {
-        const $thumbnail = $card.find('[class*="thumb"], [class*="thumbnail"], [class*="img"]').find('img').first();
-        if ($thumbnail.length > 0) {
-          const imgSrc = $thumbnail.attr('src') || $thumbnail.attr('data-src');
-          if (imgSrc && imgSrc.startsWith('http')) {
-            metadata.imageUrl = imgSrc;
+      if ($imageElement.length === 0) {
+        $imageElement = $card.find('img').first();
+      }
+      
+      if ($imageElement.length > 0) {
+        const tagName = $imageElement.prop('tagName')?.toLowerCase();
+        if (tagName === 'img') {
+          const imgSrc = $imageElement.attr('src') || $imageElement.attr('data-src') || $imageElement.attr('data-lazy-src');
+          if (imgSrc && (imgSrc.startsWith('http') || imgSrc.startsWith('//'))) {
+            metadata.imageUrl = imgSrc.startsWith('//') ? 'https:' + imgSrc : imgSrc;
+          }
+        } else {
+          // background-image에서 URL 추출
+          const style = $imageElement.attr('style') || '';
+          const bgMatch = style.match(/background-image:\s*url\(['"]?([^'"]+)['"]?\)/);
+          if (bgMatch && bgMatch[1]) {
+            const imgSrc = bgMatch[1];
+            metadata.imageUrl = imgSrc.startsWith('//') ? 'https:' + imgSrc : imgSrc;
           }
         }
       }
