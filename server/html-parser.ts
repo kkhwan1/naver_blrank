@@ -484,18 +484,30 @@ export class NaverHTMLParser {
               if (obj.titleHref && obj.titleHref.includes('blog.naver.com')) {
                 const blogUrl = this.extractBlogUrl(obj.titleHref);
                 if (blogUrl) {
-                  // 첫 번째 객체의 전체 구조를 로그로 출력 (디버깅용)
+                  // 첫 번째 객체의 전체 키 목록과 샘플 값을 로그로 출력 (디버깅용)
                   if (extractedCount === 0) {
-                    console.log(`🔍 ${logPrefix}첫 번째 JSON 객체 구조:`, JSON.stringify(obj, null, 2));
+                    const keys = Object.keys(obj);
+                    console.log(`🔍 ${logPrefix}첫 번째 JSON 객체의 키 목록 (${keys.length}개):`, keys);
+                    console.log(`🔍 ${logPrefix}샘플 값:`, {
+                      title: obj.title?.substring(0, 50),
+                      titleHref: obj.titleHref?.substring(0, 50),
+                      imageSrc: obj.imageSrc?.substring(0, 50),
+                    });
                   }
                   
                   // description은 여러 필드명으로 존재할 수 있음
-                  const description = obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc;
+                  const description = obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc || obj.desc || obj.content || obj.text;
+                  
+                  // date는 여러 필드명으로 존재할 수 있음
+                  const date = obj.createdDate || obj.date || obj.publishDate || obj.regDate || obj.writeDate || obj.postDate;
+                  
+                  // imageSrc는 여러 필드명으로 존재할 수 있음
+                  const image = obj.imageSrc || obj.imageUrl || obj.thumbnail || obj.thumbUrl || obj.image;
                   
                   jsonDataMap.set(blogUrl, {
                     blogName: obj.title,
-                    createdDate: obj.createdDate,
-                    imageSrc: obj.imageSrc,
+                    createdDate: date,
+                    imageSrc: image,
                     description: description,
                   });
                   extractedCount++;
