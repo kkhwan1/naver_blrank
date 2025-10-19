@@ -780,7 +780,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * 연관검색어 및 추천검색어 조회
+   * 연관검색어 및 추천검색어 조회 (스마트블록 기반 + 중복 제거)
+   * 
+   * 데이터 소스:
+   * 1. 연관키워드 (네이버 광고 API) - 제외용으로만 사용
+   * 2. 연관검색어 (스마트블록 블로그 제목 분석)
+   * 3. 추천검색어 (수식어 조합 + 네이버 검색 API 검증)
+   * 
+   * 중복 제거 순서:
+   * - 광고 API 연관키워드 → 연관검색어에서 제외
+   * - 연관검색어 → 추천검색어에서 제외
    */
   app.get('/api/keywords/:id/related-keywords', requireAuth, async (req, res) => {
     try {
@@ -791,20 +800,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
       }
 
-      console.log(`[추천키워드] 키워드: "${keyword.keyword}"`);
+      console.log(`\n[추천키워드 통합] 키워드: "${keyword.keyword}"`);
 
+      // ① 네이버 광고 API에서 연관키워드 가져오기 (중복 제거용)
+      let adApiKeywords: string[] = [];
+      try {
+        const adRelatedKeywords = await naverSearchAdClient.getRelatedKeywords(keyword.keyword, 20);
+        adApiKeywords = adRelatedKeywords.map(k => k.relKeyword.toLowerCase());
+        console.log(`  ✓ 광고 API 연관키워드: ${adApiKeywords.length}개`);
+      } catch (error) {
+        console.log(`  ⚠️ 광고 API 조회 실패 (계속 진행)`);
+      }
+
+      // ② 스마트블록 기반 연관검색어 + 추천검색어 가져오기
       const htmlParser = new NaverHTMLParser();
-      const relatedKeywords = await htmlParser.extractRelatedKeywords(keyword.keyword);
+      const allKeywords = await htmlParser.extractRelatedKeywords(keyword.keyword);
 
-      // 타입별로 분리
-      const related = relatedKeywords.filter(k => k.type === 'related');
-      const recommended = relatedKeywords.filter(k => k.type === 'recommended');
+      // ③ 타입별로 분리
+      let related = allKeywords.filter(k => k.type === 'related');
+      let recommended = allKeywords.filter(k => k.type === 'recommended');
+
+      // ④ 중복 제거: 광고 API 연관키워드 제외
+      const adKeywordSet = new Set(adApiKeywords);
+      
+      related = related.filter(k => 
+        !adKeywordSet.has(k.keyword.toLowerCase())
+      );
+      
+      recommended = recommended.filter(k => 
+        !adKeywordSet.has(k.keyword.toLowerCase())
+      );
+
+      // ⑤ 연관검색어 → 추천검색어 중복 제거 (이미 html-parser에서 처리됨)
+      
+      console.log(`\n📊 최종 결과:`);
+      console.log(`  - 연관검색어: ${related.length}개 (광고 API 중복 제거 완료)`);
+      console.log(`  - 추천검색어: ${recommended.length}개 (전체 중복 제거 완료)`);
+      console.log(`  - 총 ${related.length + recommended.length}개 키워드\n`);
 
       res.json({
         keyword: keyword.keyword,
         related,
         recommended,
-        total: relatedKeywords.length,
+        total: related.length + recommended.length,
       });
 
     } catch (error) {

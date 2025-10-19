@@ -1022,21 +1022,32 @@ export class NaverHTMLParser {
   }
 
   /**
-   * 연관검색어 및 추천검색어 추출
+   * 연관검색어 및 추천검색어 추출 (스마트블록 측정 결과 기반)
    * @param keyword 기준 키워드
    * @returns 연관검색어(최대 20개) + 추천검색어(최대 10개)
    */
   async extractRelatedKeywords(keyword: string): Promise<RelatedKeyword[]> {
     try {
-      console.log(`\n🔍 "${keyword}" 키워드 분석 시작\n`);
+      console.log(`\n🔍 "${keyword}" 키워드 분석 시작 (스마트블록 기반)\n`);
 
-      // ① 연관검색어 추출 (실제 블로그 제목 분석)
-      const relatedKeywords = await this.extractFromBlogSearch(keyword);
+      // ① 스마트블록에서 topBlogs 가져오기
+      const smartblockResult = await this.searchNaver(keyword);
+      const topBlogs = smartblockResult.categories[0]?.blogs.slice(0, 10) || [];
+      
+      if (topBlogs.length === 0) {
+        console.log('  ⚠️ 스마트블록에서 블로그를 찾을 수 없습니다');
+        return [];
+      }
 
-      // ② 추천검색어 생성 (수식어 조합 + 검증)
+      console.log(`  📖 스마트블록 블로그 ${topBlogs.length}개 발견\n`);
+
+      // ② 연관검색어 추출 (topBlogs 제목 분석)
+      const relatedKeywords = await this.extractFromTopBlogs(keyword, topBlogs);
+
+      // ③ 추천검색어 생성 (수식어 조합 + 검증)
       const recommendedKeywords = await this.extractFromHTML(keyword);
 
-      // ③ 중복 제거: 추천검색어에서 연관검색어와 겹치는 것 제외
+      // ④ 중복 제거: 추천검색어에서 연관검색어와 겹치는 것 제외
       const relatedKeywordSet = new Set(
         relatedKeywords.map(k => k.keyword.toLowerCase())
       );
@@ -1045,22 +1056,59 @@ export class NaverHTMLParser {
         !relatedKeywordSet.has(k.keyword.toLowerCase())
       );
 
-      // ④ 타입별로 개수 제한
+      // ⑤ 타입별로 개수 제한
       const related = relatedKeywords.slice(0, 20);      // 최대 20개
       const recommended = uniqueRecommended.slice(0, 10); // 최대 10개
 
       console.log(`\n📊 결과 요약:`);
-      console.log(`  - 연관검색어: ${related.length}개`);
+      console.log(`  - 연관검색어: ${related.length}개 (스마트블록 기반)`);
       console.log(`  - 추천검색어: ${recommended.length}개 (중복 제거 완료)`);
       console.log(`  - 총 ${related.length + recommended.length}개 키워드 추출 완료\n`);
 
-      // ⑤ 병합하여 반환
+      // ⑥ 병합하여 반환
       return [...related, ...recommended];
 
     } catch (error) {
       console.error('연관검색어 추출 오류:', error);
       return [];
     }
+  }
+
+  /**
+   * topBlogs 제목에서 연관검색어 추출
+   */
+  private async extractFromTopBlogs(keyword: string, topBlogs: any[]): Promise<RelatedKeyword[]> {
+    const keywords: RelatedKeyword[] = [];
+    const seenKeywords = new Set<string>();
+    
+    try {
+      console.log(`📖 스마트블록 블로그 제목 분석 중...`);
+
+      topBlogs.forEach((blog) => {
+        const title = blog.title || '';
+        
+        // 제목에서 키워드 조합 추출
+        const extractedKeywords = this.extractKeywordPhrases(title, keyword);
+        
+        // 결과 저장 (최대 20개)
+        extractedKeywords.forEach(kw => {
+          if (!seenKeywords.has(kw) && kw !== keyword && keywords.length < 20) {
+            seenKeywords.add(kw);
+            keywords.push({
+              keyword: kw,
+              type: 'related'
+            });
+          }
+        });
+      });
+      
+      console.log(`  ✓ 스마트블록 제목에서 연관검색어 ${keywords.length}개 추출\n`);
+      
+    } catch (error) {
+      console.error('  ✗ 스마트블록 제목 분석 오류:', error);
+    }
+    
+    return keywords.slice(0, 20);
   }
 
   /**
