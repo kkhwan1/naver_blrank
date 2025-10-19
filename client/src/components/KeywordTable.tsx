@@ -159,9 +159,9 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
     <div className="space-y-3">
       {/* 필터 및 검색 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Select value={rankFilter} onValueChange={handleRankFilterChange}>
-            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-rank-filter">
+            <SelectTrigger className="flex-1 sm:w-[140px]" data-testid="select-rank-filter">
               <SelectValue placeholder="순위 범위" />
             </SelectTrigger>
             <SelectContent>
@@ -173,7 +173,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
           </Select>
 
           <Select value={dateFilter} onValueChange={handleDateFilterChange}>
-            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-date-filter">
+            <SelectTrigger className="flex-1 sm:w-[140px]" data-testid="select-date-filter">
               <SelectValue placeholder="측정 날짜" />
             </SelectTrigger>
             <SelectContent>
@@ -185,7 +185,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
           </Select>
 
           <Select value={trendFilter} onValueChange={handleTrendFilterChange}>
-            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-trend-filter">
+            <SelectTrigger className="flex-1 sm:w-[140px]" data-testid="select-trend-filter">
               <SelectValue placeholder="변동 추세" />
             </SelectTrigger>
             <SelectContent>
