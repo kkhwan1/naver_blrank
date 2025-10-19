@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useLocation } from 'wouter';
 import { TrendingUp, ArrowUp, ArrowDown, Bell, Loader2, RefreshCw } from 'lucide-react';
 import Header from '@/components/Header';
 import StatCard from '@/components/StatCard';
@@ -68,7 +67,6 @@ function formatLastMeasured(dateString: string | null): string {
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [measuringId, setMeasuringId] = useState<string | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -183,8 +181,13 @@ export default function Dashboard() {
   };
 
   const handleViewDetails = (id: string) => {
-    // 키워드 상세 페이지로 이동
-    setLocation(`/keyword/${id}`);
+    const keyword = keywords.find(k => k.id === id);
+    if (keyword) {
+      setSelectedKeywordId(id);
+      setSelectedKeywordName(keyword.keyword);
+      setSelectedTargetUrl(keyword.targetUrl);
+      setDetailDialogOpen(true);
+    }
   };
 
   const handleDeleteKeyword = (id: string) => {

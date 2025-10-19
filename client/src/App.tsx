@@ -12,7 +12,6 @@ import Analytics from "@/pages/Analytics";
 import Groups from "@/pages/Groups";
 import Settings from "@/pages/Settings";
 import UrlAnalyzer from "@/pages/UrlAnalyzer";
-import KeywordDetail from "@/pages/KeywordDetail";
 import AdminDashboard from "@/pages/admin/dashboard";
 import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
@@ -38,13 +37,6 @@ function Router() {
         <ProtectedRoute>
           <AppLayout>
             <Dashboard />
-          </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/keyword/:id">
-        <ProtectedRoute>
-          <AppLayout>
-            <KeywordDetail />
           </AppLayout>
         </ProtectedRoute>
       </Route>
