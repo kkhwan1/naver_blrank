@@ -355,41 +355,43 @@ export default function MeasurementDetailDialog({
                                 {category.rank ? '해당 카테고리 상위 블로그:' : '이 카테고리에서 대신 노출된 상위 블로그:'}
                               </p>
                               {category.topBlogs.map((blog, blogIdx) => (
-                                <div key={blogIdx} className="p-2 border rounded-md hover-elevate">
+                                <div key={blogIdx} className="p-3 border rounded-md hover-elevate">
                                   <a
                                     href={blog.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-start gap-3 text-xs"
+                                    className="flex items-start gap-3"
                                     data-testid={`blog-link-${blogIdx}`}
                                   >
-                                    <span className="text-muted-foreground mt-0.5">{blogIdx + 1}.</span>
+                                    <div className="flex-shrink-0 w-6 text-center">
+                                      <span className="text-sm font-semibold text-muted-foreground">{blogIdx + 1}</span>
+                                    </div>
                                     
                                     {blog.imageUrl && (
                                       <img
                                         src={blog.imageUrl}
                                         alt={blog.title || '블로그 썸네일'}
-                                        className="w-16 h-16 object-cover rounded flex-shrink-0"
+                                        className="w-20 h-20 object-cover rounded flex-shrink-0"
                                         data-testid={`blog-image-${blogIdx}`}
                                       />
                                     )}
                                     
                                     <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="truncate font-medium text-foreground hover:text-primary">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-medium text-foreground hover:text-primary line-clamp-1">
                                           {blog.title || blog.url}
                                         </span>
                                         <ExternalLink className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
                                       </div>
                                       
                                       {blog.description && (
-                                        <p className="mt-1 text-muted-foreground line-clamp-2" data-testid={`blog-description-${blogIdx}`}>
+                                        <p className="text-sm text-muted-foreground line-clamp-3 mb-2" data-testid={`blog-description-${blogIdx}`}>
                                           {blog.description}
                                         </p>
                                       )}
                                       
                                       {(blog.blogName || blog.author || blog.publishedDate) && (
-                                        <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                           {(blog.blogName || blog.author) && (
                                             <span className="truncate">
                                               {blog.blogName || blog.author}
