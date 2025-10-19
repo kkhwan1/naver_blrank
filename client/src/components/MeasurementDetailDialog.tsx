@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, AlertTriangle, Shield, Ban, Clock, FileWarning, Info, CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { ExternalLink, AlertTriangle, Shield, Ban, Clock, FileWarning, Info, CheckCircle2, XCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import KeywordStatsTab from './KeywordStatsTab';
@@ -70,7 +70,7 @@ export default function MeasurementDetailDialog({
   keyword,
   targetUrl 
 }: MeasurementDetailDialogProps) {
-  const [showUnifiedSearch, setShowUnifiedSearch] = useState(false);
+  const [viewMode, setViewMode] = useState<'smartblock' | 'unified'>('smartblock');
   
   const { data: measurements = [], isLoading } = useQuery<Measurement[]>({
     queryKey: ['/api/measurements', keywordId],
@@ -152,6 +152,35 @@ export default function MeasurementDetailDialog({
               </div>
             ) : (
               <div className="space-y-4">
+                {/* 스마트블록/통합검색 토글 버튼 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setViewMode('smartblock')}
+                    className={viewMode === 'smartblock' 
+                      ? 'border-2 border-primary bg-primary/5' 
+                      : 'bg-muted border-muted-foreground/20'}
+                    data-testid="button-view-smartblock"
+                  >
+                    스마트블록
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setViewMode('unified')}
+                    className={viewMode === 'unified' 
+                      ? 'border-2 border-primary bg-primary/5' 
+                      : 'bg-muted border-muted-foreground/20'}
+                    data-testid="button-view-unified"
+                  >
+                    통합검색
+                  </Button>
+                </div>
+
+                {/* 스마트블록 뷰 */}
+                {viewMode === 'smartblock' && (
+                <div className="space-y-4">
                 {/* Phase 2: 개선된 통합검색 이탈 경고 배너 */}
                 {latestMeasurement.smartblockStatus === 'RANKED_BUT_HIDDEN' && (() => {
                   const category = latestMeasurement.hiddenReasonCategory || '알 수 없음';
@@ -288,27 +317,7 @@ export default function MeasurementDetailDialog({
 
                 {categories.length > 0 && (
                   <Card className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">스마트블록 카테고리 상세</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowUnifiedSearch(!showUnifiedSearch)}
-                        data-testid="button-toggle-unified-search"
-                      >
-                        {showUnifiedSearch ? (
-                          <>
-                            <ChevronUp className="w-4 h-4 mr-1" />
-                            통합검색 숨기기
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="w-4 h-4 mr-1" />
-                            통합검색 보기
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    <h3 className="font-semibold">스마트블록 카테고리 상세</h3>
                     <div className="space-y-3">
                       {categories.map((category, idx) => (
                         <div key={idx} className="p-3 border rounded-md space-y-2">
@@ -406,17 +415,6 @@ export default function MeasurementDetailDialog({
                   </Card>
                 )}
 
-                {/* 통합검색 섹션 (토글) */}
-                {showUnifiedSearch && (
-                  <div className="mt-4">
-                    <KeywordUnifiedSearchTab 
-                      keywordId={keywordId} 
-                      keyword={keyword}
-                      targetUrl={targetUrl}
-                    />
-                  </div>
-                )}
-
                 {measurements.length > 1 && (
                   <Card className="p-4 space-y-3">
                     <h3 className="font-semibold">최근 측정 기록</h3>
@@ -436,6 +434,49 @@ export default function MeasurementDetailDialog({
                       ))}
                     </div>
                   </Card>
+                )}
+                </div>
+                )}
+
+                {/* 통합검색 뷰 */}
+                {viewMode === 'unified' && (
+                <div className="space-y-4">
+                  <Card className="p-4 space-y-3">
+                    <h3 className="font-semibold">기본 정보</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">측정 시간:</span>
+                        <p className="font-medium">{formatDate(latestMeasurement.measuredAt)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">소요 시간:</span>
+                        <p className="font-medium">{(latestMeasurement.durationMs / 1000).toFixed(2)}초</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <KeywordUnifiedSearchTab 
+                    keywordId={keywordId} 
+                    keyword={keyword}
+                    targetUrl={targetUrl}
+                  />
+
+                  {measurements.length > 1 && (
+                    <Card className="p-4 space-y-3">
+                      <h3 className="font-semibold">최근 측정 기록</h3>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {measurements.slice(1, 11).map((m) => (
+                          <div key={m.id} className="flex items-center justify-between text-sm p-2 hover-elevate rounded-md">
+                            <span className="text-muted-foreground">{formatDate(m.measuredAt)}</span>
+                            <div className="flex items-center gap-2">
+                              {getStatusBadge(m.smartblockStatus)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+                </div>
                 )}
               </div>
             )}
