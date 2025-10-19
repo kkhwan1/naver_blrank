@@ -99,9 +99,7 @@ export class NaverHTMLParser {
       'NAVER NOW',
       '뉴스',
       '콘텐츠',
-      '인플루언서 참여 콘텐츠',
       '놓치기 아쉬운 콘텐츠',
-      '브랜드 콘텐츠',
     ];
     
     const footerTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
