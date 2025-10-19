@@ -213,7 +213,7 @@ export class NaverHTMLParser {
             blogName: jsonData?.blogName || metadata.blogName,
             author: metadata.author, // JSON에는 author 정보 없음
             publishedDate: jsonData?.createdDate || metadata.publishedDate,
-            description: metadata.description,
+            description: jsonData?.description || metadata.description,
             imageUrl: jsonData?.imageSrc || metadata.imageUrl,
           };
           
@@ -290,7 +290,7 @@ export class NaverHTMLParser {
             blogName: jsonData?.blogName || metadata.blogName,
             author: metadata.author,
             publishedDate: jsonData?.createdDate || metadata.publishedDate,
-            description: metadata.description,
+            description: jsonData?.description || metadata.description,
             imageUrl: jsonData?.imageSrc || metadata.imageUrl,
           };
           
