@@ -232,26 +232,10 @@ export default function Dashboard() {
     alerts: keywordsData.filter((k) => k.status === 'out' || k.status === 'error').length,
   };
 
-  const trendData = useMemo<MeasurementData[]>(() => {
-    const days = 7;
-    const data: MeasurementData[] = [];
-    const avgRanks = keywordsData.filter(k => k.rank !== null).map(k => k.rank!);
-    const baseAvg = avgRanks.length > 0 ? avgRanks.reduce((a, b) => a + b, 0) / avgRanks.length : 2;
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const variation = (Math.random() - 0.5) * 0.5;
-      const rank = Math.max(1, Math.min(3, Math.round(baseAvg + variation)));
-      
-      data.push({
-        date: `${date.getMonth() + 1}/${date.getDate()}`,
-        rank,
-      });
-    }
-    
-    return data;
-  }, [keywordsData]);
+  const { data: trendData = [] } = useQuery<MeasurementData[]>({
+    queryKey: ['/api/rank-trend'],
+    enabled: !!keywords,
+  });
 
   if (isLoading) {
     return (

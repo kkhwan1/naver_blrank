@@ -11,7 +11,7 @@ import {
 import { randomUUID } from "crypto";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { eq, desc, inArray, and } from "drizzle-orm";
+import { eq, desc, inArray, and, gte } from "drizzle-orm";
 
 export interface UserStats {
   user: User;
@@ -57,6 +57,8 @@ export interface IStorage {
   
   getKeywordRecommendation(keywordId: number): Promise<KeywordRecommendation | undefined>;
   saveKeywordRecommendation(recommendation: InsertKeywordRecommendation): Promise<KeywordRecommendation>;
+  
+  getAggregatedRankTrend(userId: string, days: number): Promise<Array<{date: string, avgRank: number, count: number}>>;
 }
 
 export class MemStorage implements IStorage {
@@ -398,6 +400,43 @@ export class MemStorage implements IStorage {
     this.recommendations.set(id, recommendation);
     return recommendation;
   }
+
+  async getAggregatedRankTrend(userId: string, days: number): Promise<Array<{date: string, avgRank: number, count: number}>> {
+    const userKeywords = Array.from(this.keywords.values()).filter(k => k.userId === userId);
+    const keywordIds = userKeywords.map(k => k.id);
+    
+    if (keywordIds.length === 0) {
+      return [];
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const relevantMeasurements = Array.from(this.measurements.values())
+      .filter(m => keywordIds.includes(m.keywordId) && m.measuredAt >= cutoffDate && m.rankSmartblock !== null);
+
+    const dateMap = new Map<string, {ranks: number[], count: number}>();
+
+    relevantMeasurements.forEach(m => {
+      const dateKey = m.measuredAt.toISOString().split('T')[0];
+      if (!dateMap.has(dateKey)) {
+        dateMap.set(dateKey, { ranks: [], count: 0 });
+      }
+      const entry = dateMap.get(dateKey)!;
+      if (m.rankSmartblock !== null) {
+        entry.ranks.push(m.rankSmartblock);
+        entry.count++;
+      }
+    });
+
+    const result = Array.from(dateMap.entries()).map(([date, data]) => ({
+      date,
+      avgRank: data.ranks.length > 0 ? data.ranks.reduce((a, b) => a + b, 0) / data.ranks.length : 0,
+      count: data.count,
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
+    return result;
+  }
 }
 
 class PostgresStorage implements IStorage {
@@ -677,6 +716,57 @@ class PostgresStorage implements IStorage {
       .values(data)
       .returning();
     return result[0];
+  }
+
+  async getAggregatedRankTrend(userId: string, days: number): Promise<Array<{date: string, avgRank: number, count: number}>> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const userKeywords = await this.db.select()
+      .from(keywords)
+      .where(eq(keywords.userId, userId));
+
+    const keywordIds = userKeywords.map(k => k.id);
+
+    if (keywordIds.length === 0) {
+      return [];
+    }
+
+    const relevantMeasurements = await this.db.select()
+      .from(measurements)
+      .where(
+        and(
+          inArray(measurements.keywordId, keywordIds),
+          gte(measurements.measuredAt, cutoffDate)
+        )
+      )
+      .orderBy(desc(measurements.measuredAt));
+
+    const filteredMeasurements = relevantMeasurements.filter(m => 
+      m.rankSmartblock !== null
+    );
+
+    const dateMap = new Map<string, {ranks: number[], count: number}>();
+
+    filteredMeasurements.forEach(m => {
+      const dateKey = m.measuredAt.toISOString().split('T')[0];
+      if (!dateMap.has(dateKey)) {
+        dateMap.set(dateKey, { ranks: [], count: 0 });
+      }
+      const entry = dateMap.get(dateKey)!;
+      if (m.rankSmartblock !== null) {
+        entry.ranks.push(m.rankSmartblock);
+        entry.count++;
+      }
+    });
+
+    const result = Array.from(dateMap.entries()).map(([date, data]) => ({
+      date,
+      avgRank: data.ranks.length > 0 ? data.ranks.reduce((a, b) => a + b, 0) / data.ranks.length : 0,
+      count: data.count,
+    })).sort((a, b) => a.date.localeCompare(b.date));
+
+    return result;
   }
 }
 

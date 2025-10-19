@@ -643,6 +643,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/rank-trend', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const days = req.query.days ? parseInt(req.query.days as string) : 7;
+      
+      const trendData = await storage.getAggregatedRankTrend(user.id, days);
+      
+      const formattedData = trendData.map(d => ({
+        date: new Date(d.date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }),
+        rank: Math.round(d.avgRank * 10) / 10,
+        count: d.count,
+      }));
+      
+      res.json(formattedData);
+    } catch (error) {
+      console.error('순위 트렌드 조회 오류:', error);
+      res.status(500).json({ error: '순위 트렌드 조회 중 오류가 발생했습니다' });
+    }
+  });
+
   app.post('/api/analyze', async (req, res) => {
     try {
       const { url } = req.body;

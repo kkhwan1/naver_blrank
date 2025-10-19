@@ -18,6 +18,8 @@ export default function RankTrendChart({ data }: RankTrendChartProps) {
       rank: d.rank || 0,
     }));
 
+  const hasData = chartData.length > 0;
+
   return (
     <Card className="p-5">
       <div className="mb-4">
@@ -25,7 +27,12 @@ export default function RankTrendChart({ data }: RankTrendChartProps) {
         <p className="text-xs text-muted-foreground mt-1">최근 7일간 평균 순위 변화</p>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
+      {!hasData ? (
+        <div className="h-[300px] flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">측정 데이터가 부족합니다. 키워드를 측정해 주세요.</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>
           <defs>
             <linearGradient id="rankGradient" x1="0" y1="0" x2="0" y2="1">
@@ -72,6 +79,7 @@ export default function RankTrendChart({ data }: RankTrendChartProps) {
           />
         </LineChart>
       </ResponsiveContainer>
+      )}
     </Card>
   );
 }
