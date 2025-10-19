@@ -5,7 +5,8 @@ import {
   type Group, type InsertGroup,
   type KeywordGroup, type InsertKeywordGroup,
   type UserSettings, type InsertUserSettings,
-  keywords, measurements, users, groups, keywordGroups, userSettings 
+  type KeywordRecommendation, type InsertKeywordRecommendation,
+  keywords, measurements, users, groups, keywordGroups, userSettings, keywordRecommendations
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import postgres from "postgres";
@@ -53,6 +54,9 @@ export interface IStorage {
   
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
   updateUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings>;
+  
+  getKeywordRecommendation(keywordId: number): Promise<KeywordRecommendation | undefined>;
+  saveKeywordRecommendation(recommendation: InsertKeywordRecommendation): Promise<KeywordRecommendation>;
 }
 
 export class MemStorage implements IStorage {
@@ -62,9 +66,11 @@ export class MemStorage implements IStorage {
   private groups: Map<number, Group>;
   private keywordGroupRelations: Map<string, KeywordGroup>;
   private settings: Map<string, UserSettings>;
+  private recommendations: Map<number, KeywordRecommendation>;
   private nextKeywordId: number;
   private nextMeasurementId: number;
   private nextGroupId: number;
+  private nextRecommendationId: number;
 
   constructor() {
     this.users = new Map();
@@ -73,9 +79,11 @@ export class MemStorage implements IStorage {
     this.groups = new Map();
     this.keywordGroupRelations = new Map();
     this.settings = new Map();
+    this.recommendations = new Map();
     this.nextKeywordId = 1;
     this.nextMeasurementId = 1;
     this.nextGroupId = 1;
+    this.nextRecommendationId = 1;
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -369,6 +377,27 @@ export class MemStorage implements IStorage {
     this.settings.set(userId, settings);
     return settings;
   }
+
+  async getKeywordRecommendation(keywordId: number): Promise<KeywordRecommendation | undefined> {
+    const allRecommendations = Array.from(this.recommendations.values())
+      .filter(r => r.keywordId === keywordId)
+      .sort((a, b) => b.analyzedAt.getTime() - a.analyzedAt.getTime());
+    return allRecommendations[0];
+  }
+
+  async saveKeywordRecommendation(data: InsertKeywordRecommendation): Promise<KeywordRecommendation> {
+    const id = this.nextRecommendationId++;
+    const now = new Date();
+    const recommendation: KeywordRecommendation = {
+      id,
+      keywordId: data.keywordId,
+      recommendations: data.recommendations,
+      analyzedAt: now,
+      createdAt: now,
+    };
+    this.recommendations.set(id, recommendation);
+    return recommendation;
+  }
 }
 
 class PostgresStorage implements IStorage {
@@ -632,6 +661,22 @@ class PostgresStorage implements IStorage {
         .returning();
       return result[0];
     }
+  }
+
+  async getKeywordRecommendation(keywordId: number): Promise<KeywordRecommendation | undefined> {
+    const result = await this.db.select()
+      .from(keywordRecommendations)
+      .where(eq(keywordRecommendations.keywordId, keywordId))
+      .orderBy(desc(keywordRecommendations.analyzedAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async saveKeywordRecommendation(data: InsertKeywordRecommendation): Promise<KeywordRecommendation> {
+    const result = await this.db.insert(keywordRecommendations)
+      .values(data)
+      .returning();
+    return result[0];
   }
 }
 

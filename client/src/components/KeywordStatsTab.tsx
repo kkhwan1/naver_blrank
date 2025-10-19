@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,8 @@ interface RelatedKeywordsData {
   related: RecommendedKeyword[];
   recommended: RecommendedKeyword[];
   total: number;
+  analyzedAt?: string;
+  cached?: boolean;
 }
 
 interface KeywordStatsTabProps {
@@ -76,9 +79,11 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
   // 추천 키워드 API (블로그 제목 분석)
   const { data: recommendedData, isFetching: recommendedFetching, refetch: refetchRecommended } = useQuery<RelatedKeywordsData>({
     queryKey: ['/api/keywords', keywordId, 'related-keywords'],
-    queryFn: async () => {
+    queryFn: async ({ queryKey }) => {
       if (!keywordId) throw new Error('키워드 ID가 없습니다');
-      const res = await fetch(`/api/keywords/${keywordId}/related-keywords`);
+      const force = (queryKey[3] as boolean) || false;
+      const url = `/api/keywords/${keywordId}/related-keywords${force ? '?force=true' : ''}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('추천키워드 조회 실패');
       return res.json();
     },
@@ -92,6 +97,36 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleForceAnalyze = async () => {
+    setIsAnalyzing(true);
+    try {
+      // force=true로 강제 재분석
+      const res = await fetch(`/api/keywords/${keywordId}/related-keywords?force=true`);
+      if (res.ok) {
+        const freshData = await res.json();
+        // queryClient에 새로운 데이터 직접 설정
+        queryClient.setQueryData(['/api/keywords', keywordId, 'related-keywords'], freshData);
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return '방금 전';
+    if (diffMins < 60) return `${diffMins}분 전`;
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffDays < 7) return `${diffDays}일 전`;
+    return date.toLocaleDateString('ko-KR');
   };
 
   const formatNumber = (num: number) => {
@@ -305,24 +340,55 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
             <p className="text-sm text-muted-foreground mt-1">
               실제 블로그 제목을 분석하여 연관/추천 키워드를 추출합니다
             </p>
-          </div>
-          <Button 
-            onClick={handleAnalyze} 
-            disabled={isAnalyzing || recommendedFetching}
-            data-testid="button-analyze-keywords"
-          >
-            {isAnalyzing || recommendedFetching ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                분석 중...
-              </>
-            ) : (
-              <>
-                <BarChart3 className="w-4 h-4 mr-2" />
-                분석하기
-              </>
+            {recommendedData?.analyzedAt && (
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <span>마지막 분석: {formatRelativeTime(recommendedData.analyzedAt)}</span>
+                {recommendedData.cached && (
+                  <Badge variant="outline" className="text-xs px-1.5 py-0">캐시</Badge>
+                )}
+              </div>
             )}
-          </Button>
+          </div>
+          <div className="flex gap-2">
+            {!recommendedData ? (
+              <Button 
+                onClick={handleAnalyze} 
+                disabled={isAnalyzing || recommendedFetching}
+                data-testid="button-analyze-keywords"
+              >
+                {isAnalyzing || recommendedFetching ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    분석 중...
+                  </>
+                ) : (
+                  <>
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    분석하기
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleForceAnalyze} 
+                disabled={isAnalyzing || recommendedFetching}
+                variant="outline"
+                data-testid="button-reanalyze-keywords"
+              >
+                {isAnalyzing || recommendedFetching ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    분석 중...
+                  </>
+                ) : (
+                  <>
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    다시 분석하기
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
 
         {!recommendedData && !recommendedFetching && (

@@ -125,6 +125,20 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
   updatedAt: true,
 });
 
+export const keywordRecommendations = pgTable("keyword_recommendations", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  keywordId: integer("keyword_id").notNull().references(() => keywords.id, { onDelete: "cascade" }),
+  recommendations: jsonb("recommendations").notNull(), // { related: [...], recommended: [...] }
+  analyzedAt: timestamp("analyzed_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertKeywordRecommendationSchema = createInsertSchema(keywordRecommendations).omit({
+  id: true,
+  analyzedAt: true,
+  createdAt: true,
+});
+
 export type InsertKeyword = z.infer<typeof insertKeywordSchema>;
 export type Keyword = typeof keywords.$inferSelect;
 export type InsertMeasurement = z.infer<typeof insertMeasurementSchema>;
@@ -137,3 +151,5 @@ export type InsertKeywordGroup = z.infer<typeof insertKeywordGroupSchema>;
 export type KeywordGroup = typeof keywordGroups.$inferSelect;
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
 export type UserSettings = typeof userSettings.$inferSelect;
+export type InsertKeywordRecommendation = z.infer<typeof insertKeywordRecommendationSchema>;
+export type KeywordRecommendation = typeof keywordRecommendations.$inferSelect;

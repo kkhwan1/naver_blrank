@@ -780,7 +780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * 연관검색어 및 추천검색어 조회 (스마트블록 기반 + 중복 제거)
+   * 연관검색어 및 추천검색어 조회 (스마트블록 기반 + 중복 제거 + 캐싱)
    * 
    * 데이터 소스:
    * 1. 연관키워드 (네이버 광고 API) - 제외용으로만 사용
@@ -790,17 +790,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * 중복 제거 순서:
    * - 광고 API 연관키워드 → 연관검색어에서 제외
    * - 연관검색어 → 추천검색어에서 제외
+   * 
+   * 캐싱:
+   * - 기본적으로 DB에 저장된 최근 분석 결과 반환
+   * - force=true 쿼리 파라미터로 강제 재분석 가능
    */
   app.get('/api/keywords/:id/related-keywords', requireAuth, async (req, res) => {
     try {
       const keywordId = parseInt(req.params.id);
       const keyword = await storage.getKeyword(keywordId);
+      const force = req.query.force === 'true';
 
       if (!keyword) {
         return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
       }
 
-      console.log(`\n[추천키워드 통합] 키워드: "${keyword.keyword}"`);
+      console.log(`\n[추천키워드 통합] 키워드: "${keyword.keyword}" (force: ${force})`);
+
+      // 캐시된 결과 확인 (force가 아닐 때만)
+      if (!force) {
+        const cached = await storage.getKeywordRecommendation(keywordId);
+        if (cached) {
+          const data = cached.recommendations as any;
+          console.log(`  ✓ 캐시된 결과 사용 (분석 시각: ${cached.analyzedAt.toISOString()})`);
+          return res.json({
+            keyword: keyword.keyword,
+            related: data.related || [],
+            recommended: data.recommended || [],
+            total: (data.related?.length || 0) + (data.recommended?.length || 0),
+            analyzedAt: cached.analyzedAt,
+            cached: true,
+          });
+        }
+      }
+
+      // 새로 분석
+      console.log(`  🔄 새로운 분석 시작...`);
 
       // ① 네이버 광고 API에서 연관키워드 가져오기 (중복 제거용)
       let adApiKeywords: string[] = [];
@@ -838,11 +863,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`  - 추천검색어: ${recommended.length}개 (전체 중복 제거 완료)`);
       console.log(`  - 총 ${related.length + recommended.length}개 키워드\n`);
 
+      // ⑥ 결과를 DB에 저장
+      const saved = await storage.saveKeywordRecommendation({
+        keywordId,
+        recommendations: { related, recommended },
+      });
+      console.log(`  ✓ 분석 결과 저장 완료 (ID: ${saved.id})`);
+
       res.json({
         keyword: keyword.keyword,
         related,
         recommended,
         total: related.length + recommended.length,
+        analyzedAt: saved.analyzedAt,
+        cached: false,
       });
 
     } catch (error) {
