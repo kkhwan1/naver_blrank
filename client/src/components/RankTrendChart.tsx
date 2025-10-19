@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export interface MeasurementData {
@@ -10,12 +8,9 @@ export interface MeasurementData {
 
 interface RankTrendChartProps {
   data: MeasurementData[];
-  timeRange?: '7d' | '30d' | '90d';
 }
 
-export default function RankTrendChart({ data, timeRange = '30d' }: RankTrendChartProps) {
-  const [selectedRange, setSelectedRange] = useState(timeRange);
-
+export default function RankTrendChart({ data }: RankTrendChartProps) {
   const chartData = data
     .filter((d) => d.rank !== null)
     .map((d) => ({
@@ -25,34 +20,9 @@ export default function RankTrendChart({ data, timeRange = '30d' }: RankTrendCha
 
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
         <h3 className="text-base font-semibold">순위 추이</h3>
-        <div className="flex gap-2">
-          <Button
-            variant={selectedRange === '7d' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => setSelectedRange('7d')}
-            data-testid="range-7d"
-          >
-            7일
-          </Button>
-          <Button
-            variant={selectedRange === '30d' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => setSelectedRange('30d')}
-            data-testid="range-30d"
-          >
-            30일
-          </Button>
-          <Button
-            variant={selectedRange === '90d' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => setSelectedRange('90d')}
-            data-testid="range-90d"
-          >
-            90일
-          </Button>
-        </div>
+        <p className="text-xs text-muted-foreground mt-1">최근 7일간 평균 순위 변화</p>
       </div>
 
       <ResponsiveContainer width="100%" height={300}>
