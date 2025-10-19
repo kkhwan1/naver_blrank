@@ -1,0 +1,238 @@
+ 통합검색 블로그 크롤링 로직 상세 분석
+전체 흐름도
+버튼 클릭
+    ↓
+POST /api/measure-all/:id
+    ↓
+htmlParser.searchAllResults(keyword, targetUrl)
+    ↓
+[1단계] axios로 네이버 통합검색 HTML 가져오기
+    ↓
+[2단계] parseAllSearchResults()로 HTML 파싱
+    ↓
+[3단계] Cheerio로 블로그 링크 찾기
+    ↓
+[4단계] 각 블로그 URL 정규화 및 중복 제거
+    ↓
+[5단계] 블로그 메타데이터 추출 (제목, 블로그명, 날짜, 이미지)
+    ↓
+[6단계] 타겟 URL 순위 찾기
+    ↓
+[7단계] DB 저장 및 응답 반환
+1단계: 네이버 통합검색 페이지 요청
+파일: server/html-parser.ts:390-441
+async searchAllResults(keyword: string, targetUrl: string): Promise<AllSearchResult> {
+  try {
+    // ① 쿠키 문자열 생성
+    const cookieString = Object.entries(this.cookies)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('; ');
+
+    // ② 네이버 통합검색 페이지 요청
+    const response = await axios.get('https://search.naver.com/search.naver', {
+      params: {
+        ssc: 'tab.blog.all',  // 블로그 탭 전체 검색
+        query: keyword,       // 검색 키워드
+      },
+      headers: {
+        ...this.headers,      // User-Agent 등
+        Cookie: cookieString, // 세션 쿠키
+      },
+      timeout: 15000,         // 15초 타임아웃
+    });
+
+    // ③ HTML 응답 받기
+    const html = response.data;
+    
+    // ④ HTML 파싱 함수 호출
+    const result = this.parseAllSearchResults(html, targetUrl);
+    return result;
+    
+  } catch (error) {
+    // 실패 시 빈 결과 반환
+    return {
+      found: false,
+      blogResults: [],
+      totalBlogs: 0,
+      targetRank: null,
+    };
+  }
+}
+요청 URL 예시:
+https://search.naver.com/search.naver?ssc=tab.blog.all&query=가습기
+2단계: HTML 파싱 준비
+파일: server/html-parser.ts:500-514
+private parseAllSearchResults(html: string, targetUrl: string): AllSearchResult {
+  // ① Cheerio로 HTML 로드 (jQuery처럼 사용 가능)
+  const $ = cheerio.load(html);
+  
+  // ② 결과 저장용 변수 초기화
+  const blogResults: BlogResult[] = [];    // 블로그 목록
+  const seenUrls = new Set<string>();      // 중복 URL 체크용
+  let targetRank: number | null = null;    // 내 블로그 순위
+
+  // ③ 타겟 URL 정규화 (비교용)
+  const normalizedTarget = this.normalizeUrl(targetUrl);
+  
+  // ④ 모든 블로그 링크 찾기
+  const allBlogLinks = $('a[href*="blog.naver.com"]').toArray();
+  console.log(`전체 블로그 링크 개수: ${allBlogLinks.length}`);
+  
+  // ... 다음 단계
+}
+CSS 셀렉터 설명:
+'a[href*="blog.naver.com"]': href 속성에 "blog.naver.com"이 포함된 모든 <a> 태그 찾기
+3단계: 블로그 URL 추출 및 정규화
+파일: server/html-parser.ts:516-569
+for (const link of allBlogLinks) {
+  const $link = $(link);
+  const href = $link.attr('href') || '';
+  
+  // ① 블로그 URL 추출
+  if (href.includes('blog.naver.com')) {
+    blogUrl = this.extractBlogUrl(href);
+    console.log(`블로그 URL 추출: ${href} -> ${blogUrl}`);
+  }
+
+  // ② 중복 체크
+  if (blogUrl && !seenUrls.has(blogUrl)) {
+    seenUrls.add(blogUrl);
+    
+    // ... 메타데이터 추출 (다음 단계)
+  }
+}
+extractBlogUrl() 함수
+파일: server/html-parser.ts:347-357
+private extractBlogUrl(url: string): string | null {
+  try {
+    // 패턴 1: https://blog.naver.com/아이디/포스트번호
+    const blogMatch = url.match(/blog\.naver\.com\/([^/?]+)\/(\d+)/);
+    if (blogMatch && blogMatch[2]) {
+      return `https://blog.naver.com/${blogMatch[1]}/${blogMatch[2]}`;
+    }
+
+    // 패턴 2: ?blogId=아이디&logNo=포스트번호
+    const paramMatch = url.match(/blogId=([^&]+).*?logNo=(\d+)/);
+    if (paramMatch && paramMatch[2]) {
+      return `https://blog.naver.com/${paramMatch[1]}/${paramMatch[2]}`;
+    }
+
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+추출 예시:
+입력: /url?url=https%3A%2F%2Fblog.naver.com%2Fuser123%2F223456789
+출력: https://blog.naver.com/user123/223456789
+
+입력: /search.naver?where=post&blogId=user123&logNo=223456789
+출력: https://blog.naver.com/user123/223456789
+4단계: 블로그 메타데이터 추출
+파일: server/html-parser.ts:528-559
+// ① 제목 추출 (우선순위: text > aria-label > title 속성)
+const title = $link.text().trim() 
+  || $link.attr('aria-label') 
+  || $link.attr('title') 
+  || '제목 없음';
+
+// ② 블로그 컨테이너 찾기 (Naver의 현재 HTML 구조)
+const articleContainer = $link.closest('[class*="fds-ugc-block-mod"]');
+const blogItem = articleContainer.find('.fds-inner-box').first();
+
+// ③ 블로그명 추출
+const blogName = blogItem.find('.fds-info-inner-text .fds-comps-text').first().text().trim()
+  || blogItem.find('a[class*="fds-info-inner-text"] span').first().text().trim();
+
+// ④ 발행일 추출
+const publishDate = blogItem.find('.fds-info-sub-inner-text').first().text().trim()
+  || blogItem.find('span[class*="fds-info-sub-inner-text"]').first().text().trim();
+
+// ⑤ 썸네일 이미지 추출
+let imageUrl: string | undefined = undefined;
+const blogItemContainer = $link.closest('[class*="fds-ugc-block-mod"]');
+if (blogItemContainer.length > 0) {
+  const $image = blogItemContainer.find('img[src*="mblogthumb"]').first();
+  if ($image.length > 0) {
+    imageUrl = $image.attr('src');
+  }
+}
+
+// ⑥ BlogResult 객체 생성
+const blogResult: BlogResult = {
+  url: blogUrl,
+  title,
+  position: blogResults.length,
+  blogName: blogName || undefined,
+  publishDate: publishDate || undefined,
+  imageUrl: imageUrl || undefined,
+};
+
+blogResults.push(blogResult);
+네이버 HTML 구조 예시:
+<div class="fds-ugc-block-mod">
+  <div class="fds-inner-box">
+    <a href="...">
+      <span class="fds-comps-text">블로그 제목</span>
+    </a>
+    <div class="fds-info-inner-text">
+      <span class="fds-comps-text">블로그명</span>
+    </div>
+    <div class="fds-info-sub-inner-text">
+      <span>2025.01.15</span>
+    </div>
+  </div>
+  <img src="...mblogthumb..." alt="썸네일">
+</div>
+5단계: 타겟 URL 순위 찾기
+파일: server/html-parser.ts:562-568
+// 현재 위치 계산 (1-based)
+const currentPosition = blogResults.length + 1;
+
+// URL 정규화하여 비교
+const normalizedBlogUrl = this.normalizeUrl(blogUrl);
+
+if (normalizedBlogUrl === normalizedTarget && targetRank === null) {
+  targetRank = currentPosition;
+  console.log(`✓ Target URL found at position ${targetRank}`);
+}
+normalizeUrl() 함수
+파일: server/html-parser.ts:583-595
+normalizeUrl(url: string): string {
+  try {
+    let normalized = url.trim();
+    
+    // ① 모바일 주소 → PC 주소 변환
+    normalized = normalized.replace('m.blog.naver.com', 'blog.naver.com');
+    
+    // ② 프로토콜 제거
+    normalized = normalized.replace(/^https?:\/\//, '');
+    
+    // ③ 마지막 슬래시 제거
+    normalized = normalized.replace(/\/$/, '');
+    
+    // ④ 쿼리스트링 제거
+    normalized = normalized.split('?')[0];
+    
+    // ⑤ 해시 제거
+    normalized = normalized.split('#')[0];
+    
+    return normalized;
+  } catch (error) {
+    return url;
+  }
+}
+정규화 예시:
+입력: https://m.blog.naver.com/user123/223456789?param=value#section
+출력: blog.naver.com/user123/223456789
+
+입력: http://blog.naver.com/user123/223456789/
+출력: blog.naver.com/user123/223456789
+6단계: 결과 반환
+파일: server/html-parser.ts:575-581
+return {
+  found: blogResults.length > 0,  // 블로그 발견 여부
+  blogResults: blogResults,        // 전체 블로그 목록
+  totalBlogs: blogResults.length,  // 총 블로그 수
+  targetRank,                      // 내 블로그 순위 (없으면 null)
+};
