@@ -88,9 +88,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["Pretendard", "-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "sans-serif"],
         serif: ["var(--font-serif)"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        mono: ["SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Consolas", "Courier New", "monospace"],
       },
       keyframes: {
         "accordion-down": {
