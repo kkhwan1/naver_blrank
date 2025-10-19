@@ -72,7 +72,8 @@ interface KeywordTableProps {
 }
 
 export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDelete, onRemeasure, filterBy = 'all' }: KeywordTableProps) {
-  const [selectedFilter, setSelectedFilter] = useState(filterBy);
+  const [trendFilter, setTrendFilter] = useState(filterBy);
+  const [rankFilter, setRankFilter] = useState<'all' | 'rank1' | 'rank1-3' | 'rank4plus'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const itemsPerPage = 14;
@@ -85,11 +86,18 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
     
     if (!matchesSearch) return false;
     
-    // 상태 필터
-    if (selectedFilter === 'all') return true;
-    if (selectedFilter === 'up') return keyword.change > 0;
-    if (selectedFilter === 'down') return keyword.change < 0;
-    if (selectedFilter === 'stable') return keyword.change === 0;
+    // 순위 범위 필터
+    if (rankFilter !== 'all') {
+      if (rankFilter === 'rank1' && keyword.rank !== 1) return false;
+      if (rankFilter === 'rank1-3' && (keyword.rank === null || keyword.rank < 1 || keyword.rank > 3)) return false;
+      if (rankFilter === 'rank4plus' && (keyword.rank !== null && keyword.rank >= 1 && keyword.rank <= 3)) return false;
+    }
+    
+    // 변동 추세 필터
+    if (trendFilter === 'all') return true;
+    if (trendFilter === 'up') return keyword.change > 0;
+    if (trendFilter === 'down') return keyword.change < 0;
+    if (trendFilter === 'stable') return keyword.change === 0;
     return true;
   });
 
@@ -107,8 +115,13 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
     }
   }, [filteredKeywords.length, totalPages, currentPage]);
 
-  const handleFilterChange = (filter: 'all' | 'up' | 'down' | 'stable') => {
-    setSelectedFilter(filter);
+  const handleTrendFilterChange = (filter: 'all' | 'up' | 'down' | 'stable') => {
+    setTrendFilter(filter);
+    setCurrentPage(1);
+  };
+
+  const handleRankFilterChange = (filter: 'all' | 'rank1' | 'rank1-3' | 'rank4plus') => {
+    setRankFilter(filter);
     setCurrentPage(1);
   };
 
@@ -119,36 +132,76 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
 
   return (
     <div className="space-y-3">
+      {/* 순위 범위 필터 */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">순위 범위</span>
+        <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
+          <Button
+            variant={rankFilter === 'all' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleRankFilterChange('all')}
+            data-testid="filter-rank-all"
+          >
+            전체
+          </Button>
+          <Button
+            variant={rankFilter === 'rank1' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleRankFilterChange('rank1')}
+            data-testid="filter-rank-1"
+          >
+            1위
+          </Button>
+          <Button
+            variant={rankFilter === 'rank1-3' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleRankFilterChange('rank1-3')}
+            data-testid="filter-rank-1-3"
+          >
+            1-3위
+          </Button>
+          <Button
+            variant={rankFilter === 'rank4plus' ? 'default' : 'secondary'}
+            size="sm"
+            onClick={() => handleRankFilterChange('rank4plus')}
+            data-testid="filter-rank-4plus"
+          >
+            4위 이상
+          </Button>
+        </div>
+      </div>
+
+      {/* 변동 추세 필터 및 검색 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
           <Button
-            variant={selectedFilter === 'all' ? 'default' : 'secondary'}
+            variant={trendFilter === 'all' ? 'default' : 'secondary'}
             size="sm"
-            onClick={() => handleFilterChange('all')}
+            onClick={() => handleTrendFilterChange('all')}
             data-testid="filter-all"
           >
             전체
           </Button>
           <Button
-            variant={selectedFilter === 'up' ? 'default' : 'secondary'}
+            variant={trendFilter === 'up' ? 'default' : 'secondary'}
             size="sm"
-            onClick={() => handleFilterChange('up')}
+            onClick={() => handleTrendFilterChange('up')}
             data-testid="filter-up"
           >
             상승
           </Button>
           <Button
-            variant={selectedFilter === 'down' ? 'default' : 'secondary'}
+            variant={trendFilter === 'down' ? 'default' : 'secondary'}
             size="sm"
-            onClick={() => handleFilterChange('down')}
+            onClick={() => handleTrendFilterChange('down')}
             data-testid="filter-down"
           >
             하락
           </Button>
           <Button
-            variant={selectedFilter === 'stable' ? 'default' : 'secondary'}
+            variant={trendFilter === 'stable' ? 'default' : 'secondary'}
             size="sm"
-            onClick={() => handleFilterChange('stable')}
+            onClick={() => handleTrendFilterChange('stable')}
             data-testid="filter-stable"
           >
             유지
