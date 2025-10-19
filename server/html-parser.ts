@@ -656,32 +656,63 @@ export class NaverHTMLParser {
         let title = $link.text().trim() || $link.attr('aria-label') || $link.attr('title') || '제목 없음';
         title = title.replace(/\s*접기\s*$/g, '').trim();
         
-        // 블로그 컨테이너 찾기 (네이버의 현재 HTML 구조)
-        const articleContainer = $link.closest('[class*="fds-ugc-block-mod"]');
-        const blogItem = articleContainer.find('.fds-inner-box').first();
+        // 블로그 카드 찾기 - 통합검색 블로그 탭의 li.bx 또는 상위 컨테이너
+        let $card = $link.closest('li.bx, div[class*="fds-ugc-block"], div[class*="total_area"], div[class*="api_ani_send"]');
+        if ($card.length === 0) {
+          // 폴백: 더 넓은 범위에서 검색
+          $card = $link.closest('div, li').filter((i, el) => {
+            return $(el).find('a[href*="blog.naver.com"]').length > 0;
+          }).first();
+        }
         
-        // 블로그명 추출
-        const blogName = blogItem.find('.fds-info-inner-text .fds-comps-text').first().text().trim()
-          || blogItem.find('a[class*="fds-info-inner-text"] span').first().text().trim()
-          || undefined;
+        // 통합검색 블로그 탭 전용 메타데이터 추출
+        let blogName: string | undefined;
+        let publishedDate: string | undefined;
+        let description: string | undefined;
+        let imageUrl: string | undefined;
         
-        // 발행일 추출
-        const publishDate = blogItem.find('.fds-info-sub-inner-text').first().text().trim()
-          || blogItem.find('span[class*="fds-info-sub-inner-text"]').first().text().trim()
-          || undefined;
+        // 패턴 1: li.bx 구조 (전통적인 네이버 검색)
+        if ($card.prop('tagName')?.toLowerCase() === 'li' && $card.hasClass('bx')) {
+          // 블로그명: .sub_name, .sub_txt
+          blogName = $card.find('.sub_name, .sub_txt').first().text().trim() || undefined;
+          // 날짜: .sub_time, time 태그
+          publishedDate = $card.find('.sub_time, time').first().text().trim() || undefined;
+          // 설명: .sh_blog_passage, .api_txt_lines
+          description = $card.find('.sh_blog_passage, .api_txt_lines').first().text().trim() || undefined;
+          // 이미지: .thumb img
+          const $img = $card.find('.thumb img, .thumb_area img').first();
+          imageUrl = $img.attr('src') || $img.attr('data-src') || undefined;
+        }
         
-        // 썸네일 이미지 추출
-        let imageUrl: string | undefined = undefined;
-        const blogItemContainer = $link.closest('[class*="fds-ugc-block-mod"]');
-        if (blogItemContainer.length > 0) {
-          const $image = blogItemContainer.find('img[src*="mblogthumb"]').first();
-          if ($image.length > 0) {
-            imageUrl = $image.attr('src');
+        // 패턴 2: 새로운 FDS 구조 (현대적인 네이버 검색)
+        if (!blogName || !publishedDate) {
+          // 블로그명: .fds-info-inner-text 내부
+          if (!blogName) {
+            blogName = $card.find('.fds-info-inner-text, [class*="info-inner-text"]').first().text().trim() || undefined;
+          }
+          // 날짜: .fds-info-sub-inner-text 내부
+          if (!publishedDate) {
+            publishedDate = $card.find('.fds-info-sub-inner-text, [class*="info-sub-inner-text"]').first().text().trim() || undefined;
+          }
+          // 설명: .fds-comps-text-list
+          if (!description) {
+            description = $card.find('.fds-comps-text-list, [class*="text-list"]').first().text().trim() || undefined;
+          }
+          // 이미지: mblogthumb 이미지
+          if (!imageUrl) {
+            const $img = $card.find('img[src*="mblogthumb"], img[src*="blogthumb"]').first();
+            imageUrl = $img.attr('src') || $img.attr('data-src') || undefined;
           }
         }
         
-        // 설명 추출
-        const description = articleContainer.find('.fds-comps-text-list').text().trim() || undefined;
+        // 패턴 3: 범용 폴백 (extractBlogMetadata 사용)
+        if (!blogName && !publishedDate) {
+          const metadata = this.extractBlogMetadata($link, $, $card);
+          blogName = metadata.blogName;
+          publishedDate = metadata.publishedDate;
+          description = description || metadata.description;
+          imageUrl = imageUrl || metadata.imageUrl;
+        }
         
         blogs.push({
           url: blogUrl,
@@ -689,7 +720,7 @@ export class NaverHTMLParser {
           position: blogs.length,
           isVisible: true,
           blogName,
-          publishedDate: publishDate,
+          publishedDate,
           description,
           imageUrl,
         });
