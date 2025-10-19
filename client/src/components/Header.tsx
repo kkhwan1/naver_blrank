@@ -36,7 +36,7 @@ export default function Header({ onAddKeyword }: HeaderProps) {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-6">
             <Link href="/">
-              <div className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2 cursor-pointer md:hidden">
                 <h1 className="text-xl font-bold text-primary">blrank</h1>
               </div>
             </Link>
