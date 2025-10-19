@@ -45,7 +45,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <nav className="flex items-center h-14">
             <div className="flex items-center gap-6">
               <Link href="/">
-                <div className="font-bold text-lg cursor-pointer">Smart Block Tracker</div>
+                <div className="font-bold text-lg cursor-pointer text-primary">blrank</div>
               </Link>
               <div className="flex items-center gap-1">
                 {navItems.map((item) => {
