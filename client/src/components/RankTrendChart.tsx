@@ -24,9 +24,9 @@ export default function RankTrendChart({ data, timeRange = '30d' }: RankTrendCha
     }));
 
   return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">순위 추이</h3>
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold">순위 추이</h3>
         <div className="flex gap-2">
           <Button
             variant={selectedRange === '7d' ? 'default' : 'secondary'}
@@ -59,40 +59,45 @@ export default function RankTrendChart({ data, timeRange = '30d' }: RankTrendCha
         <LineChart data={chartData}>
           <defs>
             <linearGradient id="rankGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(142, 85%, 50%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(142, 85%, 50%)" stopOpacity={0} />
+              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis
             dataKey="date"
             stroke="hsl(var(--muted-foreground))"
             fontSize={12}
             tickLine={false}
+            axisLine={false}
           />
           <YAxis
             reversed
-            domain={[1, 3]}
-            ticks={[1, 2, 3]}
+            domain={[1, 10]}
+            ticks={[1, 2, 3, 4, 5, 10]}
             stroke="hsl(var(--muted-foreground))"
             fontSize={12}
             tickLine={false}
+            axisLine={false}
           />
           <Tooltip
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
               border: '1px solid hsl(var(--border))',
-              borderRadius: '0.5rem',
+              borderRadius: '6px',
+              fontSize: '12px',
             }}
             labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+            itemStyle={{ color: 'hsl(var(--primary))' }}
+            formatter={(value: number) => [`순위: ${value}위`, '']}
           />
           <Line
             type="monotone"
             dataKey="rank"
-            stroke="hsl(142, 85%, 50%)"
+            stroke="hsl(var(--primary))"
             strokeWidth={2}
-            dot={{ fill: 'hsl(142, 85%, 50%)', strokeWidth: 2 }}
-            activeDot={{ r: 6 }}
+            dot={{ fill: 'hsl(var(--primary))', r: 3 }}
+            activeDot={{ r: 5 }}
             fill="url(#rankGradient)"
           />
         </LineChart>
