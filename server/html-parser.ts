@@ -637,6 +637,71 @@ export class NaverHTMLParser {
       const blogs: BlogResult[] = [];
       const seenUrls = new Set<string>();
       
+      // 패턴 0: HTML 내부 JSON 데이터 추출 시도
+      const jsonDataMap = new Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }>();
+      try {
+        let totalScriptTags = 0;
+        let scriptsWithCreatedDate = 0;
+        let scriptsWithTitleHref = 0;
+        
+        // script 태그에서 JSON 데이터 찾기
+        $('script').each((i, script) => {
+          const scriptContent = $(script).html() || '';
+          totalScriptTags++;
+          
+          if (scriptContent.includes('"createdDate"')) scriptsWithCreatedDate++;
+          if (scriptContent.includes('"titleHref"')) scriptsWithTitleHref++;
+          
+          // JSON 배열 또는 객체 패턴 찾기
+          if (scriptContent.includes('"createdDate"') && scriptContent.includes('"titleHref"')) {
+            console.log(`🔎 JSON 데이터 발견 가능성 있는 script 태그 (길이: ${scriptContent.length})`);
+            
+            // 네이버 블로그 JSON 패턴: "createdDate":"...","imageHref":"...","imageSrc":"...","isAdType":...,"title":"...","titleHref":"..."
+            // 이 패턴은 항상 순서대로 나타남
+            const blogJsonPattern = /"createdDate":"([^"]+)","imageHref":"([^"]+)","imageSrc":"([^"]+)","isAdType":(true|false),"title":"([^"]+)","titleHref":"([^"]+)"/g;
+            const matches = Array.from(scriptContent.matchAll(blogJsonPattern));
+            
+            console.log(`  → 발견된 블로그 JSON 패턴: ${matches.length}개`);
+            
+            for (const match of matches) {
+              try {
+                const createdDate = match[1];
+                const imageHref = match[2];
+                const imageSrc = match[3];
+                const isAdType = match[4] === 'true';
+                const title = match[5];
+                const titleHref = match[6];
+                
+                if (titleHref && titleHref.includes('blog.naver.com')) {
+                  const blogUrl = this.extractBlogUrl(titleHref);
+                  
+                  if (blogUrl) {
+                    jsonDataMap.set(blogUrl, {
+                      blogName: title,
+                      createdDate: createdDate,
+                      imageSrc: imageSrc
+                    });
+                    console.log(`  ✅ JSON 추출: "${title}" (${createdDate})`);
+                  }
+                }
+              } catch (e) {
+                console.error('  ❌ JSON 파싱 오류:', e);
+              }
+            }
+          }
+        });
+        
+        console.log(`📊 Script 태그 분석: 총 ${totalScriptTags}개, createdDate 포함 ${scriptsWithCreatedDate}개, titleHref 포함 ${scriptsWithTitleHref}개`);
+        
+        if (jsonDataMap.size > 0) {
+          console.log(`📦 HTML 내부 JSON 데이터 ${jsonDataMap.size}개 추출 성공`);
+        } else {
+          console.log(`⚠️  HTML 내부 JSON 데이터 추출 실패 - CSS 셀렉터 방식으로 폴백`);
+        }
+      } catch (error) {
+        console.error('JSON 데이터 추출 오류:', error);
+      }
+      
       // 간단한 방법: 모든 blog.naver.com 링크 찾기
       const allBlogLinks = $('a[href*="blog.naver.com"]').toArray();
       console.log(`전체 블로그 링크 개수: ${allBlogLinks.length}`);
@@ -670,6 +735,15 @@ export class NaverHTMLParser {
         let publishedDate: string | undefined;
         let description: string | undefined;
         let imageUrl: string | undefined;
+        
+        // 패턴 0: JSON 데이터에서 메타데이터 가져오기 (최우선)
+        const jsonData = jsonDataMap.get(blogUrl);
+        if (jsonData) {
+          blogName = jsonData.blogName;
+          publishedDate = jsonData.createdDate;
+          imageUrl = jsonData.imageSrc;
+          console.log(`✨ JSON에서 메타데이터 추출 성공: blogName="${blogName}", date="${publishedDate}"`);
+        }
         
         // 패턴 1: li.bx 구조 (전통적인 네이버 검색)
         if ($card.prop('tagName')?.toLowerCase() === 'li' && $card.hasClass('bx')) {
