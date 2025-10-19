@@ -780,6 +780,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * 네이버 통합검색 블로그 탭 조회 및 타겟 블로그 순위 찾기
+   */
+  app.get('/api/keywords/:id/unified-search', requireAuth, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const keyword = await storage.getKeyword(keywordId);
+
+      if (!keyword) {
+        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      }
+
+      console.log(`[통합검색] 키워드: "${keyword.keyword}", 타겟 URL: "${keyword.targetUrl}"`);
+
+      const htmlParser = new NaverHTMLParser();
+      const result = await htmlParser.searchUnifiedBlog(keyword.keyword, keyword.targetUrl);
+
+      res.json({
+        keyword: keyword.keyword,
+        targetUrl: keyword.targetUrl,
+        targetRank: result.targetRank,
+        blogs: result.blogs,
+        totalResults: result.totalResults,
+      });
+    } catch (error) {
+      console.error('통합검색 조회 오류:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : '통합검색 조회 중 오류가 발생했습니다'
+      });
+    }
+  });
+
+  /**
    * 문서수 조회 및 경쟁률 계산 API
    * 
    * 경쟁률 계산 공식:
