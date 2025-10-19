@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Moon, Sun, BarChart3, Link as LinkIcon, LogOut, User } from 'lucide-react';
+import { Search, Plus, Moon, Sun, BarChart3, LogOut, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
@@ -43,21 +43,12 @@ export default function Header({ onAddKeyword }: HeaderProps) {
             </Link>
 
             <nav className="hidden md:flex gap-1">
-              <Link href="/analyze">
+              <Link href="/">
                 <Button
-                  variant={location === '/analyze' || location === '/' ? 'secondary' : 'ghost'}
+                  variant={location === '/' || location === '/dashboard' ? 'secondary' : 'ghost'}
                   size="sm"
                   className="gap-2"
-                >
-                  <LinkIcon className="w-4 h-4" />
-                  URL 분석
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button
-                  variant={location === '/dashboard' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="gap-2"
+                  data-testid="link-dashboard"
                 >
                   <BarChart3 className="w-4 h-4" />
                   대시보드

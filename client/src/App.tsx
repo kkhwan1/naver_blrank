@@ -11,7 +11,6 @@ import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
 import Groups from "@/pages/Groups";
 import Settings from "@/pages/Settings";
-import UrlAnalyzer from "@/pages/UrlAnalyzer";
 import AdminDashboard from "@/pages/admin/dashboard";
 import Login from "@/pages/auth/login";
 import Register from "@/pages/auth/register";
@@ -59,11 +58,6 @@ function Router() {
           <AppLayout>
             <Settings />
           </AppLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/analyze">
-        <ProtectedRoute>
-          <UrlAnalyzer />
         </ProtectedRoute>
       </Route>
     </Switch>
