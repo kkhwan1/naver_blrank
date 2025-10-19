@@ -1,0 +1,317 @@
+연관검색어 vs 추천검색어 비교표
+구분	연관검색어 (Related)	추천검색어 (Recommended)
+타입	type: 'related'	type: 'recommended'
+데이터 소스	실제 블로그 제목 분석	수식어 조합 + 검증
+추출 방법	자연어 분석 (2-4단어 조합)	사전 정의된 수식어 조합
+검증 방식	제목 포함 여부 체크	API 검색량 검증 (>100개)
+최대 개수	20개	10개
+특징	사용자가 실제 쓰는 표현	SEO 최적화된 키워드
+예시	"겨울철 가습기 추천", "가습기 청소 방법"	"가습기 추천", "가습기 후기", "가습기 가격"
+1️⃣ 연관검색어 (Related Keywords) 로직
+파일: server/html-parser.ts:636-679
+전체 흐름
+네이버 블로그 검색 API 호출
+    ↓
+실제 블로그 제목 30개 수집
+    ↓
+각 제목에서 2-4 단어 조합 추출
+    ↓
+원본 키워드 포함 여부 확인
+    ↓
+중복 제거
+    ↓
+최대 10개 반환
+코드 상세
+private async extractFromBlogSearch(keyword: string): Promise<RelatedKeyword[]> {
+  const keywords: RelatedKeyword[] = [];
+  const seenKeywords = new Set<string>();
+  
+  try {
+    // ① 네이버 블로그 검색 API 호출
+    const response = await axios.get('https://openapi.naver.com/v1/search/blog.json', {
+      params: {
+        query: keyword,        // 검색 키워드
+        display: 30,           // 30개 블로그 제목 수집
+        start: 1,
+        sort: 'sim'            // 정확도순 정렬
+      },
+      headers: {
+        'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
+        'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET
+      }
+    });
+
+    if (response.data.items) {
+      response.data.items.forEach((item: any) => {
+        // ② HTML 태그 제거 후 제목 추출
+        const title = item.title.replace(/<[^>]*>/g, '').trim();
+        
+        // ③ 제목에서 키워드 조합 추출
+        const extractedKeywords = this.extractKeywordPhrases(title, keyword);
+        
+        // ④ 결과 저장 (최대 10개)
+        extractedKeywords.forEach(kw => {
+          if (!seenKeywords.has(kw) && kw !== keyword && keywords.length < 10) {
+            seenKeywords.add(kw);
+            keywords.push({
+              keyword: kw,
+              type: 'related'  // ← 연관검색어 타입
+            });
+          }
+        });
+      });
+    }
+    
+    console.log(`블로그 제목에서 연관검색어 ${keywords.length}개 추출`);
+    
+  } catch (error) {
+    console.error('블로그 검색 API 오류:', error);
+  }
+  
+  return keywords.slice(0, 10); // 최대 10개
+}
+2-4 단어 조합 추출 로직
+파일: server/html-parser.ts:684-707
+private extractKeywordPhrases(title: string, originalKeyword: string): string[] {
+  const phrases: string[] = [];
+  
+  // ① 제목을 단어로 분리 (공백, 구두점 기준)
+  const words = title.split(/[\s,，。！？!?()[\]{}]+/).filter(w => w.trim().length > 0);
+  
+  const titleLower = title.toLowerCase();
+  const keywordLower = originalKeyword.toLowerCase();
+  
+  // ② 원본 키워드가 제목에 포함되어야 함
+  if (!titleLower.includes(keywordLower)) {
+    return phrases;
+  }
+  
+  // ③ 2~4 단어 조합 생성
+  for (let len = 2; len <= 4; len++) {
+    for (let i = 0; i <= words.length - len; i++) {
+      const phrase = words.slice(i, i + len).join(' ');
+      const phraseLower = phrase.toLowerCase();
+      
+      // ④ 필터링 조건
+      if (
+        phraseLower.includes(keywordLower) &&  // 원본 키워드 포함
+        phrase.length >= 3 &&                  // 최소 3자
+        phrase.length <= 30                    // 최대 30자
+      ) {
+        phrases.push(phrase);
+      }
+    }
+  }
+  
+  // ⑤ 중복 제거 후 최대 5개 반환
+  return [...new Set(phrases)].slice(0, 5);
+}
+실제 예시
+입력 키워드: "가습기" 블로그 제목 예시:
+1. "겨울철 가습기 추천 TOP 5 후기"
+2. "가습기 청소 방법 완벽 정리"
+3. "가습기 사용법과 관리 팁"
+추출 과정:
+제목 1: "겨울철 가습기 추천 TOP 5 후기"
+  단어: ["겨울철", "가습기", "추천", "TOP", "5", "후기"]
+  2단어 조합: "겨울철 가습기", "가습기 추천", "추천 TOP", ...
+  3단어 조합: "겨울철 가습기 추천", "가습기 추천 TOP", ...
+  4단어 조합: "겨울철 가습기 추천 TOP", ...
+  
+  필터링 결과 (가습기 포함 + 길이 조건):
+  ✓ "겨울철 가습기"
+  ✓ "가습기 추천"
+  ✓ "겨울철 가습기 추천"
+
+제목 2: "가습기 청소 방법 완벽 정리"
+  필터링 결과:
+  ✓ "가습기 청소"
+  ✓ "청소 방법"
+  ✓ "가습기 청소 방법"
+최종 연관검색어 (중복 제거):
+[
+  { keyword: "겨울철 가습기", type: "related" },
+  { keyword: "가습기 추천", type: "related" },
+  { keyword: "겨울철 가습기 추천", type: "related" },
+  { keyword: "가습기 청소", type: "related" },
+  { keyword: "가습기 청소 방법", type: "related" }
+]
+2️⃣ 추천검색어 (Recommended Keywords) 로직
+파일: server/html-parser.ts:715-789
+전체 흐름
+사전 정의된 수식어 준비
+    ↓
+원본 키워드 + 수식어 조합
+    ↓
+네이버 API로 검색량 검증
+    ↓
+검색 결과 100개 이상만 선택
+    ↓
+최대 10개 반환
+코드 상세
+private async extractFromHTML(keyword: string): Promise<RelatedKeyword[]> {
+  const keywords: RelatedKeyword[] = [];
+  const seenKeywords = new Set<string>();
+
+  try {
+    // ① 수식어 정의 (SEO 최적화된 키워드)
+    const modifiers = {
+      action: ['추천', '비교', '선택'],
+      info: ['후기', '리뷰', '사용법'],
+      purchase: ['가격', '구매', '할인'],
+      quality: ['순위', '베스트', '인기'],
+      brand: ['브랜드', '제품', '종류']
+    };
+
+    // ② 모든 수식어 배열로 평탄화
+    const allModifiers = Object.values(modifiers).flat();
+    // → ['추천', '비교', '선택', '후기', '리뷰', '사용법', '가격', '구매', '할인', '순위', '베스트', '인기', '브랜드', '제품', '종류']
+    
+    // ③ 각 수식어와 키워드 조합 생성 및 검증
+    for (const modifier of allModifiers) {
+      if (keywords.length >= 10) break;  // 최대 10개
+      
+      const candidateKeyword = `${keyword} ${modifier}`;
+      
+      // 중복 체크
+      if (seenKeywords.has(candidateKeyword)) continue;
+      
+      // ④ 실제 검색량 검증 (네이버 블로그 검색 API)
+      try {
+        const response = await axios.get('https://openapi.naver.com/v1/search/blog.json', {
+          params: {
+            query: candidateKeyword,
+            display: 5,
+            sort: 'sim'
+          },
+          headers: {
+            'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
+            'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET
+          },
+          timeout: 5000
+        });
+
+        // ⑤ 검색 결과가 100개 이상인 경우에만 추가
+        if (response.data && response.data.total > 100) {
+          seenKeywords.add(candidateKeyword);
+          keywords.push({
+            keyword: candidateKeyword,
+            type: 'recommended',              // ← 추천검색어 타입
+            searchVolume: response.data.total, // 검색 결과 개수
+            verified: true                     // 실제 데이터 검증됨
+          });
+          
+          console.log(`  ✓ "${candidateKeyword}" 추가 (검색 결과: ${response.data.total.toLocaleString()}개)`);
+        } else {
+          console.log(`  ✗ "${candidateKeyword}" 제외 (검색 결과 부족: ${response.data.total}개)`);
+        }
+        
+        // ⑥ Rate limiting 방지 (0.2초 대기)
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+      } catch (error) {
+        console.log(`  ✗ "${candidateKeyword}" API 오류`);
+        continue;
+      }
+    }
+    
+    console.log(`추천검색어 ${keywords.length}개 생성 완료 (모두 실제 데이터 검증됨)\n`);
+
+  } catch (error) {
+    console.error('추천검색어 생성 오류:', error);
+  }
+
+  return keywords.slice(0, 10);
+}
+실제 예시
+입력 키워드: "가습기" 수식어 조합 시도:
+"가습기 추천" → API 검증 → 검색 결과: 15,234개 → ✓ 추가
+"가습기 비교" → API 검증 → 검색 결과: 8,921개  → ✓ 추가
+"가습기 선택" → API 검증 → 검색 결과: 45개     → ✗ 제외 (100개 미만)
+"가습기 후기" → API 검증 → 검색 결과: 23,456개 → ✓ 추가
+"가습기 리뷰" → API 검증 → 검색 결과: 12,789개 → ✓ 추가
+"가습기 사용법" → API 검증 → 검색 결과: 6,543개 → ✓ 추가
+"가습기 가격" → API 검증 → 검색 결과: 18,234개 → ✓ 추가
+"가습기 구매" → API 검증 → 검색 결과: 9,876개 → ✓ 추가
+"가습기 할인" → API 검증 → 검색 결과: 78개    → ✗ 제외
+"가습기 순위" → API 검증 → 검색 결과: 14,567개 → ✓ 추가
+"가습기 베스트" → API 검증 → 검색 결과: 11,234개 → ✓ 추가
+"가습기 인기" → API 검증 → 검색 결과: 7,890개 → ✓ 추가
+최종 추천검색어 (최대 10개, 검색량 많은 순):
+[
+  { keyword: "가습기 후기", type: "recommended", searchVolume: 23456, verified: true },
+  { keyword: "가습기 가격", type: "recommended", searchVolume: 18234, verified: true },
+  { keyword: "가습기 추천", type: "recommended", searchVolume: 15234, verified: true },
+  { keyword: "가습기 순위", type: "recommended", searchVolume: 14567, verified: true },
+  { keyword: "가습기 리뷰", type: "recommended", searchVolume: 12789, verified: true },
+  { keyword: "가습기 베스트", type: "recommended", searchVolume: 11234, verified: true },
+  { keyword: "가습기 구매", type: "recommended", searchVolume: 9876, verified: true },
+  { keyword: "가습기 비교", type: "recommended", searchVolume: 8921, verified: true },
+  { keyword: "가습기 인기", type: "recommended", searchVolume: 7890, verified: true },
+  { keyword: "가습기 사용법", type: "recommended", searchVolume: 6543, verified: true }
+]
+3️⃣ 중복 제거 및 병합
+파일: server/html-parser.ts:611-625
+async extractRelatedKeywords(keyword: string): Promise<RelatedKeyword[]> {
+  try {
+    // ① 연관검색어 추출 (실제 블로그 제목 분석)
+    const relatedKeywords = await this.extractFromBlogSearch(keyword);
+
+    // ② 추천검색어 생성 (수식어 조합 + 검증)
+    const recommendedKeywords = await this.extractFromHTML(keyword);
+
+    // ③ 중복 제거: 추천검색어에서 연관검색어와 겹치는 것 제외
+    const relatedKeywordSet = new Set(
+      relatedKeywords.map(k => k.keyword.toLowerCase())
+    );
+    
+    const uniqueRecommended = recommendedKeywords.filter(k => 
+      !relatedKeywordSet.has(k.keyword.toLowerCase())
+    );
+
+    // ④ 타입별로 개수 제한
+    const related = relatedKeywords.slice(0, 20);      // 최대 20개
+    const recommended = uniqueRecommended.slice(0, 10); // 최대 10개
+
+    console.log(`연관검색어: ${related.length}개`);
+    console.log(`추천검색어: ${recommended.length}개 (중복 제거 완료)`);
+    console.log(`총 ${related.length + recommended.length}개 키워드 추출 완료\n`);
+
+    // ⑤ 병합하여 반환
+    return [...related, ...recommended];
+
+  } catch (error) {
+    console.error('연관검색어 추출 오류:', error);
+    return [];
+  }
+}
+중복 제거 예시
+연관검색어 (10개):
+"가습기 추천", "겨울철 가습기", "가습기 청소", ...
+추천검색어 (조합 생성 결과):
+"가습기 추천", "가습기 후기", "가습기 가격", ...
+중복 제거 후:
+연관검색어 (20개): "가습기 추천", "겨울철 가습기", "가습기 청소", ...
+추천검색어 (10개): "가습기 후기", "가습기 가격", ...  ← "가습기 추천" 제외됨
+📈 최종 결과 구조
+[
+  // 연관검색어 (최대 20개)
+  { keyword: "겨울철 가습기 추천", type: "related" },
+  { keyword: "가습기 청소 방법", type: "related" },
+  { keyword: "가습기 사용법", type: "related" },
+  // ... 17개 더
+  
+  // 추천검색어 (최대 10개, 중복 제외)
+  { keyword: "가습기 후기", type: "recommended", searchVolume: 23456, verified: true },
+  { keyword: "가습기 가격", type: "recommended", searchVolume: 18234, verified: true },
+  { keyword: "가습기 순위", type: "recommended", searchVolume: 14567, verified: true },
+  // ... 7개 더
+]
+🎯 핵심 차이점 요약
+특징	연관검색어	추천검색어
+철학	"사용자가 실제 쓰는 표현"	"SEO 최적화된 검색어"
+방법	데이터 주도 (Data-Driven)	규칙 기반 (Rule-Based)
+신뢰도	실제 사용 패턴 반영	API 검증으로 품질 보장
+활용	롱테일 키워드 발굴	핵심 키워드 선정
+예시	"겨울철 건조할 때 가습기"	"가습기 추천"
+이렇게 두 가지 방식을 병행하여 실제 사용자 행동 패턴과 검증된 SEO 키워드를 모두 확보하는 전략입니다! 🎯
