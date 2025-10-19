@@ -484,6 +484,11 @@ export class NaverHTMLParser {
               if (obj.titleHref && obj.titleHref.includes('blog.naver.com')) {
                 const blogUrl = this.extractBlogUrl(obj.titleHref);
                 if (blogUrl) {
+                  // 첫 번째 객체의 전체 구조를 로그로 출력 (디버깅용)
+                  if (extractedCount === 0) {
+                    console.log(`🔍 ${logPrefix}첫 번째 JSON 객체 구조:`, JSON.stringify(obj, null, 2));
+                  }
+                  
                   // description은 여러 필드명으로 존재할 수 있음
                   const description = obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc;
                   
