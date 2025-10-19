@@ -621,7 +621,6 @@ export class NaverHTMLParser {
 
       const response = await axios.get('https://search.naver.com/search.naver', {
         params: {
-          sm: 'tab_hty.top',
           ssc: 'tab.blog.all',
           query: keyword,
         },
@@ -635,190 +634,65 @@ export class NaverHTMLParser {
       const html = response.data;
       const $ = cheerio.load(html);
       
-      // 디버깅용 HTML 저장
-      try {
-        const fs = require('fs');
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const htmlPath = `/tmp/unified-search-${keyword}-${timestamp}.html`;
-        fs.writeFileSync(htmlPath, html);
-        console.log(`📄 HTML 저장됨: ${htmlPath}`);
-      } catch (err) {
-        console.log('HTML 저장 실패:', err);
-      }
-      
       const blogs: BlogResult[] = [];
       const seenUrls = new Set<string>();
       
-      // 네이버는 HTML 내 JSON 데이터로 블로그 결과를 제공
-      // <script> 태그 내 JSON 데이터 추출 시도
-      let blogData: any[] = [];
-      const scriptTags = $('script').toArray();
+      // 간단한 방법: 모든 blog.naver.com 링크 찾기
+      const allBlogLinks = $('a[href*="blog.naver.com"]').toArray();
+      console.log(`전체 블로그 링크 개수: ${allBlogLinks.length}`);
       
-      console.log(`📜 스크립트 태그 개수: ${scriptTags.length}`);
-      
-      for (const script of scriptTags) {
-        const scriptContent = $(script).html() || '';
+      for (const link of allBlogLinks) {
+        const $link = $(link);
+        const href = $link.attr('href') || '';
         
-        // 여러 가지 패턴 시도
-        const patterns = [
-          // 패턴 1: window.__APOLLO_STATE__ 객체
-          /window\.__APOLLO_STATE__\s*=\s*(\{[\s\S]*?\});/,
-          // 패턴 2: 배열 형태의 데이터
-          /(?:blogData|itemList|items|contents)\s*[:=]\s*(\[[\s\S]*?\]);?/,
-          // 패턴 3: 전체 JSON 객체 (더 넓은 범위)
-          /var\s+\w+\s*=\s*(\{[\s\S]{100,5000}?\});/,
-        ];
+        // URL 추출
+        const blogUrl = this.extractBlogUrl(href);
         
-        for (const pattern of patterns) {
-          const match = scriptContent.match(pattern);
-          if (match && match[1]) {
-            try {
-              const parsed = JSON.parse(match[1]);
-              
-              // APOLLO_STATE 구조인 경우
-              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                // APOLLO_STATE에서 블로그 데이터 찾기
-                const keys = Object.keys(parsed);
-                for (const key of keys) {
-                  const value = parsed[key];
-                  if (value && typeof value === 'object' && value.items && Array.isArray(value.items)) {
-                    blogData = value.items;
-                    console.log(`📊 APOLLO_STATE에서 발견: ${blogData.length}개 항목`);
-                    break;
-                  }
-                }
-                if (blogData.length > 0) break;
-              }
-              
-              // 직접 배열인 경우
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                blogData = parsed;
-                console.log(`📊 배열 데이터 발견: ${blogData.length}개 항목`);
-                break;
-              }
-            } catch (e) {
-              // JSON 파싱 실패, 다음 패턴 시도
-              continue;
-            }
+        // 중복 체크
+        if (!blogUrl || seenUrls.has(blogUrl)) continue;
+        seenUrls.add(blogUrl);
+        
+        // 제목 추출
+        let title = $link.text().trim() || $link.attr('aria-label') || $link.attr('title') || '제목 없음';
+        title = title.replace(/\s*접기\s*$/g, '').trim();
+        
+        // 블로그 컨테이너 찾기 (네이버의 현재 HTML 구조)
+        const articleContainer = $link.closest('[class*="fds-ugc-block-mod"]');
+        const blogItem = articleContainer.find('.fds-inner-box').first();
+        
+        // 블로그명 추출
+        const blogName = blogItem.find('.fds-info-inner-text .fds-comps-text').first().text().trim()
+          || blogItem.find('a[class*="fds-info-inner-text"] span').first().text().trim()
+          || undefined;
+        
+        // 발행일 추출
+        const publishDate = blogItem.find('.fds-info-sub-inner-text').first().text().trim()
+          || blogItem.find('span[class*="fds-info-sub-inner-text"]').first().text().trim()
+          || undefined;
+        
+        // 썸네일 이미지 추출
+        let imageUrl: string | undefined = undefined;
+        const blogItemContainer = $link.closest('[class*="fds-ugc-block-mod"]');
+        if (blogItemContainer.length > 0) {
+          const $image = blogItemContainer.find('img[src*="mblogthumb"]').first();
+          if ($image.length > 0) {
+            imageUrl = $image.attr('src');
           }
         }
         
-        if (blogData.length > 0) break;
-      }
-      
-      // 추가: HTML 내 모든 큰 JSON 블록 찾기 (마지막 시도)
-      if (blogData.length === 0) {
-        const allJsonMatches = html.match(/\{["\w]+:[\s\S]{200,10000}?\}/g);
-        if (allJsonMatches) {
-          console.log(`🔍 큰 JSON 블록 ${allJsonMatches.length}개 발견, 파싱 시도 중...`);
-          for (const jsonStr of allJsonMatches.slice(0, 5)) { // 처음 5개만 시도
-            try {
-              const parsed = JSON.parse(jsonStr);
-              if (parsed.items && Array.isArray(parsed.items) && parsed.items.length > 0) {
-                blogData = parsed.items;
-                console.log(`📊 큰 JSON 블록에서 발견: ${blogData.length}개 항목`);
-                break;
-              }
-            } catch (e) {
-              continue;
-            }
-          }
-        }
-      }
-      
-      // JSON 데이터로 블로그 파싱
-      if (blogData.length > 0) {
-        console.log(`✅ JSON 데이터로 파싱 시작`);
+        // 설명 추출
+        const description = articleContainer.find('.fds-comps-text-list').text().trim() || undefined;
         
-        for (const item of blogData) {
-          const titleHref = item.titleHref || item.url || item.link;
-          const title = item.title || item.blogTitle || '';
-          const imageSrc = item.imageSrc || item.thumbnail || item.image;
-          const createdDate = item.createdDate || item.publishedDate || item.date;
-          const blogName = item.bloggerNick || item.blogName || item.author;
-          
-          if (!titleHref) continue;
-          
-          let blogUrl: string | null = null;
-          if (titleHref.includes('blog.naver.com')) {
-            blogUrl = this.extractBlogUrl(titleHref);
-          } else if (titleHref.includes('in.naver.com')) {
-            const $tempLink = $(`<a href="${titleHref}"></a>`);
-            blogUrl = this.extractInfluencerBlogUrl($tempLink);
-          }
-          
-          if (!blogUrl || seenUrls.has(blogUrl)) continue;
-          seenUrls.add(blogUrl);
-          
-          blogs.push({
-            url: blogUrl,
-            title: title || '제목 없음',
-            position: blogs.length,
-            isVisible: true,
-            blogName: blogName,
-            publishedDate: createdDate,
-            description: item.description || item.summary,
-            imageUrl: imageSrc,
-          });
-        }
-        
-        console.log(`✅ JSON 파싱 완료: ${blogs.length}개 블로그 추출`);
-      }
-      
-      // JSON 파싱 실패 시 HTML 파싱 폴백
-      if (blogs.length === 0) {
-        console.log(`⚠️ JSON 데이터 추출 실패, HTML 파싱으로 폴백`);
-        
-        // 블로그 검색 결과 파싱 (HTML)
-        const blogItems = $('div.total_wrap, li.bx, div.detail_box, div.api_subject_bx, div.view_wrap, li.sh_blog_top').toArray();
-        
-        console.log(`📋 통합검색 블로그 항목 개수: ${blogItems.length}`);
-        
-        if (blogItems.length === 0) {
-          console.warn(`⚠️ 블로그 항목을 찾지 못했습니다. HTML 구조가 변경되었을 수 있습니다.`);
-          console.log(`응답 HTML 길이: ${html.length} bytes`);
-        }
-        
-        for (const item of blogItems) {
-          const $item = $(item);
-          
-          // 블로그 링크 찾기
-          const $link = $item.find('a.total_tit, a.api_txt_lines, a.title_link, a[href*="blog.naver.com"], a[href*="in.naver.com"]').first();
-          if ($link.length === 0) {
-            continue;
-          }
-          
-          const href = $link.attr('href') || '';
-          let blogUrl: string | null = null;
-          
-          if (href.includes('blog.naver.com')) {
-            blogUrl = this.extractBlogUrl(href);
-          } else if (href.includes('in.naver.com')) {
-            blogUrl = this.extractInfluencerBlogUrl($link);
-          }
-          
-          if (!blogUrl || seenUrls.has(blogUrl)) continue;
-          seenUrls.add(blogUrl);
-          
-          // 제목 추출
-          let title = $link.text().trim() || $link.attr('title') || '';
-          title = title.replace(/\s*접기\s*$/g, '').trim();
-          
-          // 메타정보 추출
-          const metadata = this.extractBlogMetadata($link, $, $item);
-          
-          blogs.push({
-            url: blogUrl,
-            title: title || '제목 없음',
-            position: blogs.length,
-            isVisible: true,
-            blogName: metadata.blogName,
-            author: metadata.author,
-            publishedDate: metadata.publishedDate,
-            description: metadata.description,
-            imageUrl: metadata.imageUrl,
-          });
-        }
+        blogs.push({
+          url: blogUrl,
+          title,
+          position: blogs.length,
+          isVisible: true,
+          blogName,
+          publishedDate: publishDate,
+          description,
+          imageUrl,
+        });
       }
       
       console.log(`✅ 통합검색 블로그 총 ${blogs.length}개 발견`);
