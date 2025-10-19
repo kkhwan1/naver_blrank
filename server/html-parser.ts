@@ -410,8 +410,8 @@ export class NaverHTMLParser {
   private extractJsonDataFromScripts(
     $: cheerio.CheerioAPI, 
     logPrefix: string = ''
-  ): Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }> {
-    const jsonDataMap = new Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }>();
+  ): Map<string, { blogName?: string; createdDate?: string; imageSrc?: string; description?: string }> {
+    const jsonDataMap = new Map<string, { blogName?: string; createdDate?: string; imageSrc?: string; description?: string }>();
     
     try {
       let totalScriptTags = 0;
@@ -484,10 +484,14 @@ export class NaverHTMLParser {
               if (obj.titleHref && obj.titleHref.includes('blog.naver.com')) {
                 const blogUrl = this.extractBlogUrl(obj.titleHref);
                 if (blogUrl) {
+                  // description은 여러 필드명으로 존재할 수 있음
+                  const description = obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc;
+                  
                   jsonDataMap.set(blogUrl, {
                     blogName: obj.title,
                     createdDate: obj.createdDate,
                     imageSrc: obj.imageSrc,
+                    description: description,
                   });
                   extractedCount++;
                 }
@@ -832,40 +836,66 @@ export class NaverHTMLParser {
           blogName = jsonData.blogName;
           publishedDate = jsonData.createdDate;
           imageUrl = jsonData.imageSrc;
-          console.log(`✨ JSON에서 메타데이터 추출 성공: blogName="${blogName}", date="${publishedDate}"`);
+          description = jsonData.description;
+          console.log(`✨ JSON에서 메타데이터 추출 성공: blogName="${blogName}", date="${publishedDate}", description="${description?.substring(0, 50)}..."`);
         }
         
         // 패턴 1: li.bx 구조 (전통적인 네이버 검색)
         if ($card.prop('tagName')?.toLowerCase() === 'li' && $card.hasClass('bx')) {
           // 블로그명: .sub_name, .sub_txt
-          blogName = $card.find('.sub_name, .sub_txt').first().text().trim() || undefined;
+          if (!blogName) {
+            blogName = $card.find('.sub_name, .sub_txt').first().text().trim() || undefined;
+          }
           // 날짜: .sub_time, time 태그
-          publishedDate = $card.find('.sub_time, time').first().text().trim() || undefined;
-          // 설명: .sh_blog_passage, .api_txt_lines
-          description = $card.find('.sh_blog_passage, .api_txt_lines').first().text().trim() || undefined;
+          if (!publishedDate) {
+            publishedDate = $card.find('.sub_time, time').first().text().trim() || undefined;
+          }
+          // 설명: .sh_blog_passage, .api_txt_lines, .total_dsc, .dsc_txt
+          if (!description) {
+            description = $card.find('.sh_blog_passage, .api_txt_lines, .total_dsc, .dsc_txt').first().text().trim() || undefined;
+          }
           // 이미지: .thumb img
-          const $img = $card.find('.thumb img, .thumb_area img').first();
-          imageUrl = $img.attr('src') || $img.attr('data-src') || undefined;
+          if (!imageUrl) {
+            const $img = $card.find('.thumb img, .thumb_area img').first();
+            imageUrl = $img.attr('src') || $img.attr('data-src') || undefined;
+          }
         }
         
-        // 패턴 2: 새로운 FDS 구조 (현대적인 네이버 검색)
-        if (!blogName || !publishedDate) {
-          // 블로그명: .fds-info-inner-text 내부
+        // 패턴 2: 새로운 FDS 구조 및 범용 선택자 (현대적인 네이버 검색)
+        if (!blogName || !publishedDate || !description || !imageUrl) {
+          // 블로그명: .fds-info-inner-text, .name, .writer 등
           if (!blogName) {
-            blogName = $card.find('.fds-info-inner-text, [class*="info-inner-text"]').first().text().trim() || undefined;
+            blogName = $card.find('.fds-info-inner-text, [class*="info-inner-text"], .name, .writer').first().text().trim() || undefined;
           }
-          // 날짜: .fds-info-sub-inner-text 내부
+          // 날짜: .fds-info-sub-inner-text, .date 등
           if (!publishedDate) {
-            publishedDate = $card.find('.fds-info-sub-inner-text, [class*="info-sub-inner-text"]').first().text().trim() || undefined;
+            publishedDate = $card.find('.fds-info-sub-inner-text, [class*="info-sub-inner-text"], .date, .time').first().text().trim() || undefined;
           }
-          // 설명: .fds-comps-text-list
+          // 설명: 여러 가능한 클래스 확인
           if (!description) {
-            description = $card.find('.fds-comps-text-list, [class*="text-list"]').first().text().trim() || undefined;
+            const descSelectors = [
+              '.fds-comps-text-list',
+              '[class*="text-list"]',
+              '.total_dsc',
+              '.dsc_txt',
+              '.api_txt_lines',
+              '.sh_blog_passage',
+              '.desc',
+              '.description',
+              '.content_desc'
+            ];
+            for (const selector of descSelectors) {
+              const text = $card.find(selector).first().text().trim();
+              if (text && text.length > 20) {
+                description = text;
+                break;
+              }
+            }
           }
-          // 이미지: mblogthumb 이미지
+          // 이미지: 여러 가능한 이미지 소스
           if (!imageUrl) {
-            const $img = $card.find('img[src*="mblogthumb"], img[src*="blogthumb"]').first();
-            imageUrl = $img.attr('src') || $img.attr('data-src') || undefined;
+            const $img = $card.find('img[src*="mblogthumb"], img[src*="blogthumb"], img[src*="phinf"], img').first();
+            imageUrl = $img.attr('src') || $img.attr('data-src') || $img.attr('data-lazy-src') || undefined;
           }
         }
         
