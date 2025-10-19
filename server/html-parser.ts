@@ -656,38 +656,88 @@ export class NaverHTMLParser {
           if (scriptContent.includes('"createdDate"') && scriptContent.includes('"titleHref"')) {
             console.log(`🔎 JSON 데이터 발견 가능성 있는 script 태그 (길이: ${scriptContent.length})`);
             
-            // 네이버 블로그 JSON 패턴: "createdDate":"...","imageHref":"...","imageSrc":"...","isAdType":...,"title":"...","titleHref":"..."
-            // 이 패턴은 항상 순서대로 나타남
-            const blogJsonPattern = /"createdDate":"([^"]+)","imageHref":"([^"]+)","imageSrc":"([^"]+)","isAdType":(true|false),"title":"([^"]+)","titleHref":"([^"]+)"/g;
-            const matches = Array.from(scriptContent.matchAll(blogJsonPattern));
+            // 더 유연한 접근: "titleHref" 키를 찾아서 해당 객체 전체를 추출
+            // 이 방법은 필드 순서, 추가 필드, 이스케이프된 문자에 강건함
+            let searchPos = 0;
+            let extractedCount = 0;
             
-            console.log(`  → 발견된 블로그 JSON 패턴: ${matches.length}개`);
-            
-            for (const match of matches) {
+            while (true) {
+              // "titleHref" 키 찾기
+              const titleHrefPos = scriptContent.indexOf('"titleHref"', searchPos);
+              if (titleHrefPos === -1) break;
+              
+              // 이 키를 포함하는 객체의 시작점 찾기 (역방향으로 '{' 찾기)
+              let objStart = titleHrefPos;
+              let braceCount = 0;
+              let foundStart = false;
+              
+              for (let i = titleHrefPos; i >= 0; i--) {
+                if (scriptContent[i] === '}') braceCount++;
+                if (scriptContent[i] === '{') {
+                  if (braceCount === 0) {
+                    objStart = i;
+                    foundStart = true;
+                    break;
+                  }
+                  braceCount--;
+                }
+              }
+              
+              if (!foundStart) {
+                searchPos = titleHrefPos + 1;
+                continue;
+              }
+              
+              // 객체의 끝점 찾기 (정방향으로 '}' 찾기)
+              let objEnd = titleHrefPos;
+              braceCount = 0;
+              let foundEnd = false;
+              
+              for (let i = objStart; i < scriptContent.length; i++) {
+                if (scriptContent[i] === '{') braceCount++;
+                if (scriptContent[i] === '}') {
+                  braceCount--;
+                  if (braceCount === 0) {
+                    objEnd = i + 1;
+                    foundEnd = true;
+                    break;
+                  }
+                }
+              }
+              
+              if (!foundEnd) {
+                searchPos = titleHrefPos + 1;
+                continue;
+              }
+              
+              // JSON 객체 추출 및 파싱
               try {
-                const createdDate = match[1];
-                const imageHref = match[2];
-                const imageSrc = match[3];
-                const isAdType = match[4] === 'true';
-                const title = match[5];
-                const titleHref = match[6];
+                const jsonStr = scriptContent.substring(objStart, objEnd);
+                const data = JSON.parse(jsonStr);
                 
-                if (titleHref && titleHref.includes('blog.naver.com')) {
-                  const blogUrl = this.extractBlogUrl(titleHref);
-                  
-                  if (blogUrl) {
-                    jsonDataMap.set(blogUrl, {
-                      blogName: title,
-                      createdDate: createdDate,
-                      imageSrc: imageSrc
-                    });
-                    console.log(`  ✅ JSON 추출: "${title}" (${createdDate})`);
+                // 필수 필드 확인 (createdDate, titleHref)
+                if (data.titleHref && data.createdDate) {
+                  if (data.titleHref.includes('blog.naver.com')) {
+                    const blogUrl = this.extractBlogUrl(data.titleHref);
+                    
+                    if (blogUrl) {
+                      jsonDataMap.set(blogUrl, {
+                        blogName: data.title || undefined,
+                        createdDate: data.createdDate,
+                        imageSrc: data.imageSrc || undefined
+                      });
+                      extractedCount++;
+                    }
                   }
                 }
               } catch (e) {
-                console.error('  ❌ JSON 파싱 오류:', e);
+                // JSON 파싱 실패는 무시하고 계속 진행
               }
+              
+              searchPos = objEnd;
             }
+            
+            console.log(`  → 추출된 블로그 JSON 객체: ${extractedCount}개`);
           }
         });
         
