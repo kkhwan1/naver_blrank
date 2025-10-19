@@ -60,7 +60,8 @@ export function RankingChart({ measurements, keyword, targetUrl }: RankingChartP
     return null;
   };
 
-  if (chartData.length === 0) {
+  // No measurements at all
+  if (measurements.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -72,6 +73,59 @@ export function RankingChart({ measurements, keyword, targetUrl }: RankingChartP
         <CardContent>
           <div className="flex h-64 items-center justify-center text-muted-foreground">
             측정 데이터가 없습니다. 측정을 실행해주세요.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Has measurements but no ranked data
+  if (chartData.length === 0) {
+    const getStatusLabel = (status: string) => {
+      const statusMap: Record<string, string> = {
+        'NOT_IN_BLOCK': '스마트블록에서 타겟 블로그를 찾을 수 없습니다',
+        'BLOCK_MISSING': '스마트블록이 존재하지 않습니다',
+        'RANKED_BUT_HIDDEN': '스마트블록에는 있지만 통합검색에서 숨겨져 있습니다',
+        'ERROR': '측정 중 오류가 발생했습니다',
+      };
+      return statusMap[status] || '순위 정보 없음';
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>순위 변동 차트</CardTitle>
+          <CardDescription>
+            키워드: {keyword}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-md text-center">
+            <p className="text-sm font-medium text-muted-foreground mb-2">
+              스마트블록 순위 없음
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {getStatusLabel(measurements[0].smartblockStatus)}
+            </p>
+          </div>
+          
+          <div>
+            <h4 className="text-sm font-medium mb-3">측정 이력 ({measurements.length}회)</h4>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {measurements.slice(0, 10).map((m) => (
+                <div key={m.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-md text-sm">
+                  <div className="flex-1">
+                    <p className="font-medium">{format(new Date(m.measuredAt), 'yyyy-MM-dd HH:mm:ss', { locale: ko })}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {getStatusLabel(m.smartblockStatus)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-muted-foreground">순위 없음</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
