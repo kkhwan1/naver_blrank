@@ -216,6 +216,7 @@ export default function Dashboard() {
     rank: k.rank,
     change: k.change,
     lastMeasured: formatLastMeasured(k.lastMeasured),
+    lastMeasuredTimestamp: k.lastMeasured,
     targetUrl: k.targetUrl,
     status: mapStatusToKeywordStatus(k.smartblockStatus, k.rank),
     searchVolume: k.searchVolume,

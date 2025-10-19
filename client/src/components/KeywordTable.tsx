@@ -53,6 +53,7 @@ export interface KeywordData {
   rank: number | null;
   change: number;
   lastMeasured: string;
+  lastMeasuredTimestamp?: string | null; // ISO 8601 timestamp for date filtering
   targetUrl: string;
   status: 'rank1' | 'rank2-3' | 'out' | 'error' | 'hidden'; // Phase 1: 'hidden' = 통합검색 이탈
   searchVolume?: number | null;
@@ -74,6 +75,7 @@ interface KeywordTableProps {
 export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDelete, onRemeasure, filterBy = 'all' }: KeywordTableProps) {
   const [trendFilter, setTrendFilter] = useState(filterBy);
   const [rankFilter, setRankFilter] = useState<'all' | 'rank1' | 'rank1-3' | 'rank4plus'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const itemsPerPage = 14;
@@ -91,6 +93,17 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
       if (rankFilter === 'rank1' && keyword.rank !== 1) return false;
       if (rankFilter === 'rank1-3' && (keyword.rank === null || keyword.rank < 1 || keyword.rank > 3)) return false;
       if (rankFilter === 'rank4plus' && (keyword.rank !== null && keyword.rank >= 1 && keyword.rank <= 3)) return false;
+    }
+    
+    // 측정 날짜 필터
+    if (dateFilter !== 'all' && keyword.lastMeasuredTimestamp) {
+      const now = new Date();
+      const measuredDate = new Date(keyword.lastMeasuredTimestamp);
+      const diffDays = Math.floor((now.getTime() - measuredDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (dateFilter === 'today' && diffDays > 0) return false;
+      if (dateFilter === '7days' && diffDays > 7) return false;
+      if (dateFilter === '30days' && diffDays > 30) return false;
     }
     
     // 변동 추세 필터
@@ -125,6 +138,11 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
     setCurrentPage(1);
   };
 
+  const handleDateFilterChange = (filter: 'all' | 'today' | '7days' | '30days') => {
+    setDateFilter(filter);
+    setCurrentPage(1);
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -132,42 +150,82 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
 
   return (
     <div className="space-y-3">
-      {/* 순위 범위 필터 */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">순위 범위</span>
-        <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
-          <Button
-            variant={rankFilter === 'all' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleRankFilterChange('all')}
-            data-testid="filter-rank-all"
-          >
-            전체
-          </Button>
-          <Button
-            variant={rankFilter === 'rank1' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleRankFilterChange('rank1')}
-            data-testid="filter-rank-1"
-          >
-            1위
-          </Button>
-          <Button
-            variant={rankFilter === 'rank1-3' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleRankFilterChange('rank1-3')}
-            data-testid="filter-rank-1-3"
-          >
-            1-3위
-          </Button>
-          <Button
-            variant={rankFilter === 'rank4plus' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleRankFilterChange('rank4plus')}
-            data-testid="filter-rank-4plus"
-          >
-            4위 이상
-          </Button>
+      {/* 순위 범위 & 측정 날짜 필터 */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">순위 범위</span>
+          <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
+            <Button
+              variant={rankFilter === 'all' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleRankFilterChange('all')}
+              data-testid="filter-rank-all"
+            >
+              전체
+            </Button>
+            <Button
+              variant={rankFilter === 'rank1' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleRankFilterChange('rank1')}
+              data-testid="filter-rank-1"
+            >
+              1위
+            </Button>
+            <Button
+              variant={rankFilter === 'rank1-3' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleRankFilterChange('rank1-3')}
+              data-testid="filter-rank-1-3"
+            >
+              1-3위
+            </Button>
+            <Button
+              variant={rankFilter === 'rank4plus' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleRankFilterChange('rank4plus')}
+              data-testid="filter-rank-4plus"
+            >
+              4위 이상
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">측정 날짜</span>
+          <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
+            <Button
+              variant={dateFilter === 'all' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleDateFilterChange('all')}
+              data-testid="filter-date-all"
+            >
+              전체
+            </Button>
+            <Button
+              variant={dateFilter === 'today' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleDateFilterChange('today')}
+              data-testid="filter-date-today"
+            >
+              오늘
+            </Button>
+            <Button
+              variant={dateFilter === '7days' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleDateFilterChange('7days')}
+              data-testid="filter-date-7days"
+            >
+              최근 7일
+            </Button>
+            <Button
+              variant={dateFilter === '30days' ? 'default' : 'secondary'}
+              size="sm"
+              onClick={() => handleDateFilterChange('30days')}
+              data-testid="filter-date-30days"
+            >
+              최근 30일
+            </Button>
+          </div>
         </div>
       </div>
 
