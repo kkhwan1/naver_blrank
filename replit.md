@@ -108,7 +108,7 @@ The project uses a monorepo structure with shared TypeScript types between the f
 ### JSON Data Extraction from Naver HTML (✅ Completed - October 19, 2025)
 **Problem**: Initial CSS selector approach yielded only 9.7% metadata coverage for unified search blog results
 
-**Solution**: Implemented robust JSON extraction from embedded script tags in Naver HTML
+**Solution**: Implemented robust JSON extraction from embedded script tags in Naver HTML for **both Smart Block and Unified Search**
 - **Implementation Method**: 
   - Searches for `"titleHref"` keys in script tags
   - Uses brace-counting algorithm to isolate complete JSON objects
@@ -125,6 +125,12 @@ The project uses a monorepo structure with shared TypeScript types between the f
   - `title` → `blogName` (블로그명)
   - `createdDate` → `publishedDate` (발행일: "2일 전", "2025.09.18." 등)
   - `imageSrc` → `imageUrl` (블로그 썸네일)
+  
+- **Code Quality**:
+  - **Refactored to shared helper**: `extractJsonDataFromScripts()` eliminates ~210 lines of duplication
+  - DRY principle: Same logic used for both Smart Block and Unified Search
+  - Maintainability: Single source of truth for JSON extraction algorithm
+  - Logging: Contextual log prefixes distinguish Smart Block vs Unified Search
   
 - **Performance**: Linear-time O(n) parsing per script tag, minimal overhead
 - **Results**: Achieved **100% metadata coverage** (up from 9.7%), verified by E2E tests

@@ -97,6 +97,11 @@ export class NaverHTMLParser {
       'NAVER 클립',
       '짧은 즐거움 네이버 클립',
       'NAVER NOW',
+      '뉴스',
+      '콘텐츠',
+      '인플루언서 참여 콘텐츠',
+      '놓치기 아쉬운 콘텐츠',
+      '브랜드 콘텐츠',
     ];
     
     const footerTitles = $('[class*="fds-comps-footer-more-subject"]').toArray();
@@ -626,19 +631,30 @@ export class NaverHTMLParser {
       
       // 패턴 2: 카드 내 작은 텍스트 요소에서 블로그명 찾기
       if (!metadata.blogName) {
+        const UI_KEYWORDS = ['정렬', '관련도순', '최신순', 'Keep', '저장', '바로가기', '접기'];
+        
         const $nearbyText = $card.find('span, div, p, dd, dt').filter((i, el) => {
           const text = $(el).text().trim();
-          return text.length > 0 && text.length < 50 && 
-                 !text.includes('http') && 
-                 text !== $link.text().trim() &&
-                 text !== metadata.publishedDate &&
-                 !/^\d/.test(text); // 숫자로 시작하지 않음 (날짜 제외)
+          
+          // 기본 검증
+          if (!text || text.length < 3 || text.length > 50) return false;
+          
+          // 제외 패턴
+          if (text.includes('http')) return false;
+          if (text === $link.text().trim()) return false;
+          if (text === metadata.publishedDate) return false;
+          if (/^\d/.test(text)) return false; // 숫자로 시작
+          
+          // UI 키워드 제외
+          if (UI_KEYWORDS.some(keyword => text.includes(keyword))) return false;
+          
+          return true;
         });
         
         if ($nearbyText.length > 0) {
           const text = $nearbyText.first().text().trim();
           const blogName = text.split(/[·•]/)[0].trim();
-          if (blogName) {
+          if (blogName && blogName.length >= 3) {
             metadata.blogName = blogName;
             if (!metadata.author) {
               metadata.author = blogName;
