@@ -118,8 +118,8 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
           <Button
             variant={selectedFilter === 'all' ? 'default' : 'secondary'}
@@ -176,20 +176,20 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
         </div>
       </div>
 
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="border rounded-md overflow-hidden bg-card">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-12 whitespace-nowrap">상태</TableHead>
-              <TableHead className="whitespace-nowrap">키워드</TableHead>
-              <TableHead className="text-right whitespace-nowrap">순위</TableHead>
-              <TableHead className="hidden sm:table-cell text-right whitespace-nowrap">변동</TableHead>
-              <TableHead className="hidden md:table-cell text-right whitespace-nowrap">월간검색량</TableHead>
-              <TableHead className="hidden md:table-cell text-right whitespace-nowrap">문서수</TableHead>
-              <TableHead className="hidden lg:table-cell text-right whitespace-nowrap w-[100px]">경쟁률</TableHead>
-              <TableHead className="hidden sm:table-cell whitespace-nowrap">측정주기</TableHead>
-              <TableHead className="hidden lg:table-cell whitespace-nowrap">마지막 측정</TableHead>
-              <TableHead className="w-12"></TableHead>
+            <TableRow className="bg-muted/30">
+              <TableHead className="w-12 whitespace-nowrap h-11">상태</TableHead>
+              <TableHead className="whitespace-nowrap h-11">키워드</TableHead>
+              <TableHead className="text-right whitespace-nowrap h-11">순위</TableHead>
+              <TableHead className="hidden sm:table-cell text-right whitespace-nowrap h-11">변동</TableHead>
+              <TableHead className="hidden md:table-cell text-right whitespace-nowrap h-11">월간검색량</TableHead>
+              <TableHead className="hidden md:table-cell text-right whitespace-nowrap h-11">문서수</TableHead>
+              <TableHead className="hidden lg:table-cell text-right whitespace-nowrap w-[100px] h-11">경쟁률</TableHead>
+              <TableHead className="hidden sm:table-cell whitespace-nowrap h-11">측정주기</TableHead>
+              <TableHead className="hidden lg:table-cell whitespace-nowrap h-11">마지막 측정</TableHead>
+              <TableHead className="w-12 h-11"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

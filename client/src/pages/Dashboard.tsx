@@ -243,9 +243,9 @@ export default function Dashboard() {
     <div className="h-full bg-background">
       <Header onAddKeyword={() => setDialogOpen(true)} />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          <div className="grid grid-cols-4 gap-2 md:gap-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="space-y-6">
+          <div className="grid grid-cols-4 gap-3 md:gap-4">
             <StatCard
               title="추적 중"
               value={stats.total}

@@ -13,10 +13,10 @@ interface StatCardProps {
 
 export default function StatCard({ title, value, icon: Icon, trend }: StatCardProps) {
   return (
-    <Card className="p-3 md:p-6 hover-elevate" data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <Card className="p-4 md:p-5 hover-elevate" data-testid={`stat-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       {/* Mobile: Compact centered layout */}
       <div className="flex md:hidden flex-col items-center justify-center text-center gap-1">
-        <Icon className="w-6 h-6 text-primary mb-1" />
+        <Icon className="w-5 h-5 text-primary mb-1" />
         <p className="text-2xl font-bold text-foreground">{value}</p>
         <p className="text-xs text-muted-foreground">{title}</p>
       </div>
@@ -24,10 +24,10 @@ export default function StatCard({ title, value, icon: Icon, trend }: StatCardPr
       {/* Desktop: Original layout */}
       <div className="hidden md:flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
-          <p className="text-4xl font-bold text-foreground">{value}</p>
+          <p className="text-sm font-medium text-muted-foreground mb-1.5">{title}</p>
+          <p className="text-3xl font-bold text-foreground tracking-tight">{value}</p>
           {trend && (
-            <div className="flex items-center gap-1 mt-2">
+            <div className="flex items-center gap-1.5 mt-2">
               <span className={`text-sm font-medium ${trend.value >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {trend.value >= 0 ? '+' : ''}{trend.value}%
               </span>
@@ -35,7 +35,7 @@ export default function StatCard({ title, value, icon: Icon, trend }: StatCardPr
             </div>
           )}
         </div>
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+        <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center">
           <Icon className="w-5 h-5 text-primary" />
         </div>
       </div>
