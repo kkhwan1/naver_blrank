@@ -193,13 +193,17 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedKeywords.map((keyword) => (
-              <TableRow
-                key={keyword.id}
-                className="cursor-pointer hover-elevate"
-                onClick={() => onRowClick?.(keyword.id)}
-                data-testid={`keyword-row-${keyword.id}`}
-              >
+            {paginatedKeywords.map((keyword) => {
+              const isOutOfRank = keyword.rank === null || keyword.rank === 0 || keyword.rank > 3;
+              
+              return (
+                <TableRow
+                  key={keyword.id}
+                  className={`cursor-pointer hover-elevate ${isOutOfRank ? 'ring-2 ring-destructive' : ''}`}
+                  onClick={() => onRowClick?.(keyword.id)}
+                  data-testid={`keyword-row-${keyword.id}`}
+                >
+
                 <TableCell>
                   <StatusDot status={keyword.status} />
                 </TableCell>
@@ -378,7 +382,8 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+            );
+            })}
             {paginatedKeywords.length === 0 && (
               <TableRow>
                 <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
