@@ -691,13 +691,21 @@ export class NaverHTMLParser {
       }
       
       // 요약문(description) 추출 - 스마트블록 구조에 맞게 개선
-      // 링크의 형제 또는 부모의 형제 요소에서 텍스트 찾기
-      let $descElement = $link.siblings().filter((i, el) => {
+      // 패턴 1: 링크 내부의 span 태그 (스마트블록 전용)
+      let $descElement = $link.find('span').filter((i, el) => {
         const text = $(el).text().trim();
         return text.length >= 15 && text.length <= 500 && text !== $link.text().trim();
       }).first();
       
-      // 형제에서 못 찾으면 부모의 형제에서 찾기
+      // 패턴 2: 링크의 형제 요소에서 텍스트 찾기
+      if ($descElement.length === 0) {
+        $descElement = $link.siblings().filter((i, el) => {
+          const text = $(el).text().trim();
+          return text.length >= 15 && text.length <= 500 && text !== $link.text().trim();
+        }).first();
+      }
+      
+      // 패턴 3: 부모의 형제에서 찾기
       if ($descElement.length === 0) {
         $descElement = $link.parent().siblings().filter((i, el) => {
           const text = $(el).text().trim();
@@ -729,13 +737,19 @@ export class NaverHTMLParser {
       }
       
       // 이미지(imageUrl) 추출 - 스마트블록 구조에 맞게 개선
-      // 링크와 가까운 이미지 우선 (형제 또는 부모의 형제)
-      let $imageElement = $link.siblings('img, [style*="background-image"]').first();
+      // 패턴 1: 스마트블록 전용 - .sds-comps-image 클래스
+      let $imageElement = $card.find('.sds-comps-image img, [class*="sds-comps-image"] img').first();
+      
+      // 패턴 2: 링크와 가까운 이미지 (형제 또는 부모의 형제)
+      if ($imageElement.length === 0) {
+        $imageElement = $link.siblings('img, [style*="background-image"]').first();
+      }
       
       if ($imageElement.length === 0) {
         $imageElement = $link.parent().siblings().find('img').first();
       }
       
+      // 패턴 3: 카드 전체에서 첫 번째 이미지
       if ($imageElement.length === 0) {
         $imageElement = $card.find('img').first();
       }
@@ -756,6 +770,14 @@ export class NaverHTMLParser {
             metadata.imageUrl = imgSrc.startsWith('//') ? 'https:' + imgSrc : imgSrc;
           }
         }
+      }
+      
+      // HTML 태그 제거 (특히 <mark> 태그)
+      if (metadata.blogName) {
+        metadata.blogName = metadata.blogName.replace(/<\/?mark>/g, '').replace(/&lt;\/?mark&gt;/g, '');
+      }
+      if (metadata.description) {
+        metadata.description = metadata.description.replace(/<\/?mark>/g, '').replace(/&lt;\/?mark&gt;/g, '');
       }
       
       // 디버그 로그 (개발 환경에서만)
