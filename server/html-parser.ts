@@ -489,20 +489,20 @@ export class NaverHTMLParser {
                     const keys = Object.keys(obj);
                     console.log(`🔍 ${logPrefix}첫 번째 JSON 객체의 키 목록 (${keys.length}개):`, keys);
                     console.log(`🔍 ${logPrefix}샘플 값:`, {
-                      title: obj.title?.substring(0, 50),
-                      titleHref: obj.titleHref?.substring(0, 50),
-                      imageSrc: obj.imageSrc?.substring(0, 50),
+                      content: obj.content?.substring(0, 50),
+                      images: obj.images,
+                      sourceProfile: obj.sourceProfile,
                     });
                   }
                   
-                  // description은 여러 필드명으로 존재할 수 있음
-                  const description = obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc || obj.desc || obj.content || obj.text;
+                  // description: content 또는 contentEllipsis 사용
+                  const description = obj.content || obj.contentEllipsis || obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc || obj.desc || obj.text;
                   
-                  // date는 여러 필드명으로 존재할 수 있음
-                  const date = obj.createdDate || obj.date || obj.publishDate || obj.regDate || obj.writeDate || obj.postDate;
+                  // date: sourceProfile 안에 있을 수 있음
+                  const date = obj.sourceProfile?.createDate || obj.sourceProfile?.date || obj.createdDate || obj.date || obj.publishDate || obj.regDate || obj.writeDate || obj.postDate;
                   
-                  // imageSrc는 여러 필드명으로 존재할 수 있음
-                  const image = obj.imageSrc || obj.imageUrl || obj.thumbnail || obj.thumbUrl || obj.image;
+                  // imageSrc: images 배열의 첫 번째 이미지
+                  const image = (obj.images && obj.images.length > 0) ? obj.images[0] : (obj.imageSrc || obj.imageUrl || obj.thumbnail || obj.thumbUrl || obj.image);
                   
                   jsonDataMap.set(blogUrl, {
                     blogName: obj.title,
