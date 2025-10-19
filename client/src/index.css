@@ -76,20 +76,20 @@
   --chart-4: 200 80% 50%;
   --chart-5: 280 70% 50%;
 
-  --font-sans: Open Sans, sans-serif;
+  --font-sans: Pretendard, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
-  --radius: .5rem; /* 8px */
-  --shadow-2xs: 0px 2px 0px 0px hsl(220 13% 91% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(220 13% 91% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(220 13% 91% / 0.00), 0px 1px 2px -1px hsl(220 13% 80% / 0.10);
-  --shadow: 0px 2px 0px 0px hsl(220 13% 91% / 0.00), 0px 1px 2px -1px hsl(220 13% 80% / 0.12);
-  --shadow-md: 0px 2px 0px 0px hsl(220 13% 91% / 0.00), 0px 2px 4px -1px hsl(220 13% 75% / 0.15);
-  --shadow-lg: 0px 2px 0px 0px hsl(220 13% 91% / 0.00), 0px 4px 6px -1px hsl(220 13% 70% / 0.18);
-  --shadow-xl: 0px 2px 0px 0px hsl(220 13% 91% / 0.00), 0px 8px 10px -1px hsl(220 13% 65% / 0.20);
-  --shadow-2xl: 0px 2px 0px 0px hsl(220 13% 91% / 0.00);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
+  --font-mono: SF Mono, Monaco, monospace;
+  --radius: .375rem; /* 6px - softer corners */
+  --shadow-2xs: 0px 0px 0px 0px transparent;
+  --shadow-xs: 0px 1px 2px 0px hsl(220 13% 50% / 0.03);
+  --shadow-sm: 0px 1px 2px 0px hsl(220 13% 50% / 0.05), 0px 1px 3px 0px hsl(220 13% 50% / 0.04);
+  --shadow: 0px 1px 3px 0px hsl(220 13% 50% / 0.06), 0px 2px 6px 0px hsl(220 13% 50% / 0.05);
+  --shadow-md: 0px 2px 4px 0px hsl(220 13% 50% / 0.07), 0px 4px 8px 0px hsl(220 13% 50% / 0.06);
+  --shadow-lg: 0px 4px 6px 0px hsl(220 13% 50% / 0.08), 0px 8px 16px 0px hsl(220 13% 50% / 0.07);
+  --shadow-xl: 0px 8px 12px 0px hsl(220 13% 50% / 0.09), 0px 16px 24px 0px hsl(220 13% 50% / 0.08);
+  --shadow-2xl: 0px 12px 24px 0px hsl(220 13% 50% / 0.10), 0px 24px 48px 0px hsl(220 13% 50% / 0.09);
+  --tracking-normal: -0.01em; /* slightly tighter for Pretendard */
+  --spacing: 0.25rem; /* 4px base spacing */
 
   /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
 
@@ -194,14 +194,14 @@
   --chart-4: 200 80% 60%;
   --chart-5: 280 70% 60%;
 
-  --shadow-2xs: 0px 2px 0px 0px hsl(222 47% 8% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(222 47% 8% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(222 47% 8% / 0.00), 0px 1px 2px -1px hsl(222 47% 8% / 0.20);
-  --shadow: 0px 2px 0px 0px hsl(222 47% 8% / 0.00), 0px 1px 2px -1px hsl(222 47% 8% / 0.25);
-  --shadow-md: 0px 2px 0px 0px hsl(222 47% 8% / 0.00), 0px 2px 4px -1px hsl(222 47% 8% / 0.30);
-  --shadow-lg: 0px 2px 0px 0px hsl(222 47% 8% / 0.00), 0px 4px 6px -1px hsl(222 47% 8% / 0.35);
-  --shadow-xl: 0px 2px 0px 0px hsl(222 47% 8% / 0.00), 0px 8px 10px -1px hsl(222 47% 8% / 0.40);
-  --shadow-2xl: 0px 2px 0px 0px hsl(222 47% 8% / 0.00);
+  --shadow-2xs: 0px 0px 0px 0px transparent;
+  --shadow-xs: 0px 1px 2px 0px hsl(222 47% 8% / 0.15);
+  --shadow-sm: 0px 1px 2px 0px hsl(222 47% 8% / 0.20), 0px 1px 3px 0px hsl(222 47% 8% / 0.15);
+  --shadow: 0px 1px 3px 0px hsl(222 47% 8% / 0.25), 0px 2px 6px 0px hsl(222 47% 8% / 0.20);
+  --shadow-md: 0px 2px 4px 0px hsl(222 47% 8% / 0.30), 0px 4px 8px 0px hsl(222 47% 8% / 0.25);
+  --shadow-lg: 0px 4px 6px 0px hsl(222 47% 8% / 0.35), 0px 8px 16px 0px hsl(222 47% 8% / 0.30);
+  --shadow-xl: 0px 8px 12px 0px hsl(222 47% 8% / 0.40), 0px 16px 24px 0px hsl(222 47% 8% / 0.35);
+  --shadow-2xl: 0px 12px 24px 0px hsl(222 47% 8% / 0.45), 0px 24px 48px 0px hsl(222 47% 8% / 0.40);
 
   /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
