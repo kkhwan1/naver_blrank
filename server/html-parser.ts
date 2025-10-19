@@ -21,6 +21,13 @@ export interface UnifiedSearchResult {
   totalResults: number;
 }
 
+export interface RelatedKeyword {
+  keyword: string;
+  type: 'related' | 'recommended';
+  searchVolume?: number;
+  verified?: boolean;
+}
+
 export class NaverHTMLParser {
   private cookies: Record<string, string>;
   private headers: Record<string, string>;
@@ -1012,5 +1019,214 @@ export class NaverHTMLParser {
       console.error('통합검색 파싱 오류:', error);
       throw error;
     }
+  }
+
+  /**
+   * 연관검색어 및 추천검색어 추출
+   * @param keyword 기준 키워드
+   * @returns 연관검색어(최대 20개) + 추천검색어(최대 10개)
+   */
+  async extractRelatedKeywords(keyword: string): Promise<RelatedKeyword[]> {
+    try {
+      console.log(`\n🔍 "${keyword}" 키워드 분석 시작\n`);
+
+      // ① 연관검색어 추출 (실제 블로그 제목 분석)
+      const relatedKeywords = await this.extractFromBlogSearch(keyword);
+
+      // ② 추천검색어 생성 (수식어 조합 + 검증)
+      const recommendedKeywords = await this.extractFromHTML(keyword);
+
+      // ③ 중복 제거: 추천검색어에서 연관검색어와 겹치는 것 제외
+      const relatedKeywordSet = new Set(
+        relatedKeywords.map(k => k.keyword.toLowerCase())
+      );
+      
+      const uniqueRecommended = recommendedKeywords.filter(k => 
+        !relatedKeywordSet.has(k.keyword.toLowerCase())
+      );
+
+      // ④ 타입별로 개수 제한
+      const related = relatedKeywords.slice(0, 20);      // 최대 20개
+      const recommended = uniqueRecommended.slice(0, 10); // 최대 10개
+
+      console.log(`\n📊 결과 요약:`);
+      console.log(`  - 연관검색어: ${related.length}개`);
+      console.log(`  - 추천검색어: ${recommended.length}개 (중복 제거 완료)`);
+      console.log(`  - 총 ${related.length + recommended.length}개 키워드 추출 완료\n`);
+
+      // ⑤ 병합하여 반환
+      return [...related, ...recommended];
+
+    } catch (error) {
+      console.error('연관검색어 추출 오류:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 블로그 제목에서 연관검색어 추출 (Related)
+   */
+  private async extractFromBlogSearch(keyword: string): Promise<RelatedKeyword[]> {
+    const keywords: RelatedKeyword[] = [];
+    const seenKeywords = new Set<string>();
+    
+    try {
+      console.log(`📖 블로그 제목 분석 중...`);
+
+      // 네이버 블로그 검색 API 호출
+      const response = await axios.get('https://openapi.naver.com/v1/search/blog.json', {
+        params: {
+          query: keyword,
+          display: 30,
+          start: 1,
+          sort: 'sim'
+        },
+        headers: {
+          'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
+          'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET
+        },
+        timeout: 10000
+      });
+
+      if (response.data.items) {
+        response.data.items.forEach((item: any) => {
+          // HTML 태그 제거 후 제목 추출
+          const title = item.title.replace(/<[^>]*>/g, '').trim();
+          
+          // 제목에서 키워드 조합 추출
+          const extractedKeywords = this.extractKeywordPhrases(title, keyword);
+          
+          // 결과 저장 (최대 20개)
+          extractedKeywords.forEach(kw => {
+            if (!seenKeywords.has(kw) && kw !== keyword && keywords.length < 20) {
+              seenKeywords.add(kw);
+              keywords.push({
+                keyword: kw,
+                type: 'related'
+              });
+            }
+          });
+        });
+      }
+      
+      console.log(`  ✓ 블로그 제목에서 연관검색어 ${keywords.length}개 추출\n`);
+      
+    } catch (error) {
+      console.error('  ✗ 블로그 검색 API 오류:', error);
+    }
+    
+    return keywords.slice(0, 20);
+  }
+
+  /**
+   * 제목에서 2-4 단어 조합 추출
+   */
+  private extractKeywordPhrases(title: string, originalKeyword: string): string[] {
+    const phrases: string[] = [];
+    
+    // 제목을 단어로 분리
+    const words = title.split(/[\s,，。！？!?()[\]{}]+/).filter(w => w.trim().length > 0);
+    
+    const titleLower = title.toLowerCase();
+    const keywordLower = originalKeyword.toLowerCase();
+    
+    // 원본 키워드가 제목에 포함되어야 함
+    if (!titleLower.includes(keywordLower)) {
+      return phrases;
+    }
+    
+    // 2~4 단어 조합 생성
+    for (let len = 2; len <= 4; len++) {
+      for (let i = 0; i <= words.length - len; i++) {
+        const phrase = words.slice(i, i + len).join(' ');
+        const phraseLower = phrase.toLowerCase();
+        
+        // 필터링 조건
+        if (
+          phraseLower.includes(keywordLower) &&
+          phrase.length >= 3 &&
+          phrase.length <= 30
+        ) {
+          phrases.push(phrase);
+        }
+      }
+    }
+    
+    // 중복 제거 후 최대 5개 반환
+    return Array.from(new Set(phrases)).slice(0, 5);
+  }
+
+  /**
+   * 수식어 조합으로 추천검색어 생성 (Recommended)
+   */
+  private async extractFromHTML(keyword: string): Promise<RelatedKeyword[]> {
+    const keywords: RelatedKeyword[] = [];
+    const seenKeywords = new Set<string>();
+
+    try {
+      console.log(`🔧 추천검색어 생성 중...`);
+
+      // 수식어 정의
+      const modifiers = {
+        action: ['추천', '비교', '선택'],
+        info: ['후기', '리뷰', '사용법'],
+        purchase: ['가격', '구매', '할인'],
+        quality: ['순위', '베스트', '인기'],
+        brand: ['브랜드', '제품', '종류']
+      };
+
+      const allModifiers = Object.values(modifiers).flat();
+      
+      // 각 수식어와 키워드 조합 생성 및 검증
+      for (const modifier of allModifiers) {
+        if (keywords.length >= 10) break;
+        
+        const candidateKeyword = `${keyword} ${modifier}`;
+        
+        if (seenKeywords.has(candidateKeyword)) continue;
+        
+        // 실제 검색량 검증
+        try {
+          const response = await axios.get('https://openapi.naver.com/v1/search/blog.json', {
+            params: {
+              query: candidateKeyword,
+              display: 5,
+              sort: 'sim'
+            },
+            headers: {
+              'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
+              'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET
+            },
+            timeout: 5000
+          });
+
+          // 검색 결과가 100개 이상인 경우에만 추가
+          if (response.data && response.data.total > 100) {
+            seenKeywords.add(candidateKeyword);
+            keywords.push({
+              keyword: candidateKeyword,
+              type: 'recommended',
+              searchVolume: response.data.total,
+              verified: true
+            });
+            
+            console.log(`  ✓ "${candidateKeyword}" 추가 (검색 결과: ${response.data.total.toLocaleString()}개)`);
+          }
+          
+          // Rate limiting 방지
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+        } catch (error) {
+          continue;
+        }
+      }
+      
+      console.log(`  ✓ 추천검색어 ${keywords.length}개 생성 완료\n`);
+
+    } catch (error) {
+      console.error('추천검색어 생성 오류:', error);
+    }
+
+    return keywords.slice(0, 10);
   }
 }

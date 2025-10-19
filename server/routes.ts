@@ -780,6 +780,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * 연관검색어 및 추천검색어 조회
+   */
+  app.get('/api/keywords/:id/related-keywords', requireAuth, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const keyword = await storage.getKeyword(keywordId);
+
+      if (!keyword) {
+        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      }
+
+      console.log(`[추천키워드] 키워드: "${keyword.keyword}"`);
+
+      const htmlParser = new NaverHTMLParser();
+      const relatedKeywords = await htmlParser.extractRelatedKeywords(keyword.keyword);
+
+      // 타입별로 분리
+      const related = relatedKeywords.filter(k => k.type === 'related');
+      const recommended = relatedKeywords.filter(k => k.type === 'recommended');
+
+      res.json({
+        keyword: keyword.keyword,
+        related,
+        recommended,
+        total: relatedKeywords.length,
+      });
+
+    } catch (error) {
+      console.error('추천키워드 조회 오류:', error);
+      res.status(500).json({ 
+        error: '추천키워드 조회 중 오류가 발생했습니다',
+        related: [],
+        recommended: [],
+        total: 0
+      });
+    }
+  });
+
+  /**
    * 네이버 통합검색 블로그 탭 조회 및 타겟 블로그 순위 찾기
    */
   app.get('/api/keywords/:id/unified-search', requireAuth, async (req, res) => {
