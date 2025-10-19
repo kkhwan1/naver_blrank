@@ -67,6 +67,20 @@ export class NaverHTMLParser {
       });
 
       const html = response.data;
+      
+      // HTML 샘플 저장 (디버깅용)
+      if (process.env.NODE_ENV === 'development') {
+        const fs = await import('fs');
+        const path = await import('path');
+        const sampleDir = path.join(process.cwd(), '/tmp/naver_html_samples');
+        if (!fs.existsSync(sampleDir)) {
+          fs.mkdirSync(sampleDir, { recursive: true });
+        }
+        const filename = path.join(sampleDir, `${keyword.replace(/[^a-zA-Z0-9가-힣]/g, '_')}.html`);
+        fs.writeFileSync(filename, html);
+        console.log(`📄 HTML 샘플 저장: ${filename}`);
+      }
+      
       return this.parseSmartBlock(html);
     } catch (error) {
       console.error('Error fetching Naver HTML:', error);
@@ -658,7 +672,8 @@ export class NaverHTMLParser {
       
       // 패턴 2: 카드 내 작은 텍스트 요소에서 블로그명 찾기
       if (!metadata.blogName) {
-        const UI_KEYWORDS = ['정렬', '관련도순', '최신순', 'Keep', '저장', '바로가기', '접기'];
+        const UI_KEYWORDS = ['정렬', '관련도순', '최신순', 'Keep', '저장', '바로가기', '접기', '기간 설정', '문서 저장'];
+        const CATEGORY_KEYWORDS = ['스피커', '감자탕', '만들기', '맛집', '양념', '인기주제'];
         
         const $nearbyText = $card.find('span, div, p, dd, dt').filter((i, el) => {
           const text = $(el).text().trim();
@@ -671,9 +686,14 @@ export class NaverHTMLParser {
           if (text === $link.text().trim()) return false;
           if (text === metadata.publishedDate) return false;
           if (/^\d/.test(text)) return false; // 숫자로 시작
+          if (text.includes('~')) return false; // "기간 설정시작 ~ 기간 설정끝"
           
           // UI 키워드 제외
           if (UI_KEYWORDS.some(keyword => text.includes(keyword))) return false;
+          
+          // 카테고리 키워드만 있는 경우 제외 (예: "마샬 스피커", "감자탕 만들기")
+          const hasOnlyCategoryWords = CATEGORY_KEYWORDS.some(keyword => text.includes(keyword));
+          if (hasOnlyCategoryWords && text.split(' ').length <= 2) return false;
           
           return true;
         });
