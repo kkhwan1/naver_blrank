@@ -133,10 +133,28 @@ export const keywordRecommendations = pgTable("keyword_recommendations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const keywordAlerts = pgTable("keyword_alerts", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  keywordId: integer("keyword_id").notNull().references(() => keywords.id, { onDelete: "cascade" }),
+  alertType: text("alert_type").notNull(), // 'rank_drop', 'search_visibility_loss', 'measurement_failure'
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  threshold: jsonb("threshold"), // { rankThreshold: 3 } for rank_drop alerts
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertKeywordRecommendationSchema = createInsertSchema(keywordRecommendations).omit({
   id: true,
   analyzedAt: true,
   createdAt: true,
+});
+
+export const insertKeywordAlertSchema = createInsertSchema(keywordAlerts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  alertType: z.enum(["rank_drop", "search_visibility_loss", "measurement_failure"]),
 });
 
 export type InsertKeyword = z.infer<typeof insertKeywordSchema>;
@@ -153,3 +171,5 @@ export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type InsertKeywordRecommendation = z.infer<typeof insertKeywordRecommendationSchema>;
 export type KeywordRecommendation = typeof keywordRecommendations.$inferSelect;
+export type InsertKeywordAlert = z.infer<typeof insertKeywordAlertSchema>;
+export type KeywordAlert = typeof keywordAlerts.$inferSelect;

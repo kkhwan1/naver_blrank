@@ -6,7 +6,8 @@ import {
   type KeywordGroup, type InsertKeywordGroup,
   type UserSettings, type InsertUserSettings,
   type KeywordRecommendation, type InsertKeywordRecommendation,
-  keywords, measurements, users, groups, keywordGroups, userSettings, keywordRecommendations
+  type KeywordAlert, type InsertKeywordAlert,
+  keywords, measurements, users, groups, keywordGroups, userSettings, keywordRecommendations, keywordAlerts
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import postgres from "postgres";
@@ -58,6 +59,11 @@ export interface IStorage {
   getKeywordRecommendation(keywordId: number): Promise<KeywordRecommendation | undefined>;
   saveKeywordRecommendation(recommendation: InsertKeywordRecommendation): Promise<KeywordRecommendation>;
   
+  getKeywordAlerts(keywordId: number): Promise<KeywordAlert[]>;
+  createKeywordAlert(alert: InsertKeywordAlert): Promise<KeywordAlert>;
+  updateKeywordAlert(id: number, data: Partial<InsertKeywordAlert>): Promise<KeywordAlert | undefined>;
+  deleteKeywordAlert(id: number): Promise<boolean>;
+  
   getAggregatedRankTrend(userId: string, days: number): Promise<Array<{date: string, avgRank: number, count: number}>>;
 }
 
@@ -69,10 +75,12 @@ export class MemStorage implements IStorage {
   private keywordGroupRelations: Map<string, KeywordGroup>;
   private settings: Map<string, UserSettings>;
   private recommendations: Map<number, KeywordRecommendation>;
+  private alerts: Map<number, KeywordAlert>;
   private nextKeywordId: number;
   private nextMeasurementId: number;
   private nextGroupId: number;
   private nextRecommendationId: number;
+  private nextAlertId: number;
 
   constructor() {
     this.users = new Map();
@@ -82,10 +90,12 @@ export class MemStorage implements IStorage {
     this.keywordGroupRelations = new Map();
     this.settings = new Map();
     this.recommendations = new Map();
+    this.alerts = new Map();
     this.nextKeywordId = 1;
     this.nextMeasurementId = 1;
     this.nextGroupId = 1;
     this.nextRecommendationId = 1;
+    this.nextAlertId = 1;
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -399,6 +409,45 @@ export class MemStorage implements IStorage {
     };
     this.recommendations.set(id, recommendation);
     return recommendation;
+  }
+
+  async getKeywordAlerts(keywordId: number): Promise<KeywordAlert[]> {
+    return Array.from(this.alerts.values()).filter(a => a.keywordId === keywordId);
+  }
+
+  async createKeywordAlert(data: InsertKeywordAlert): Promise<KeywordAlert> {
+    const id = this.nextAlertId++;
+    const now = new Date();
+    const alert: KeywordAlert = {
+      id,
+      keywordId: data.keywordId,
+      alertType: data.alertType,
+      isEnabled: data.isEnabled ?? true,
+      threshold: data.threshold ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.alerts.set(id, alert);
+    return alert;
+  }
+
+  async updateKeywordAlert(id: number, data: Partial<InsertKeywordAlert>): Promise<KeywordAlert | undefined> {
+    const existing = this.alerts.get(id);
+    if (!existing) return undefined;
+    
+    const updated: KeywordAlert = {
+      ...existing,
+      ...data,
+      id: existing.id,
+      keywordId: existing.keywordId,
+      updatedAt: new Date(),
+    };
+    this.alerts.set(id, updated);
+    return updated;
+  }
+
+  async deleteKeywordAlert(id: number): Promise<boolean> {
+    return this.alerts.delete(id);
   }
 
   async getAggregatedRankTrend(userId: string, days: number): Promise<Array<{date: string, avgRank: number, count: number}>> {
@@ -716,6 +765,34 @@ class PostgresStorage implements IStorage {
       .values(data)
       .returning();
     return result[0];
+  }
+
+  async getKeywordAlerts(keywordId: number): Promise<KeywordAlert[]> {
+    return await this.db.select()
+      .from(keywordAlerts)
+      .where(eq(keywordAlerts.keywordId, keywordId));
+  }
+
+  async createKeywordAlert(data: InsertKeywordAlert): Promise<KeywordAlert> {
+    const result = await this.db.insert(keywordAlerts)
+      .values(data)
+      .returning();
+    return result[0];
+  }
+
+  async updateKeywordAlert(id: number, data: Partial<InsertKeywordAlert>): Promise<KeywordAlert | undefined> {
+    const result = await this.db.update(keywordAlerts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(keywordAlerts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteKeywordAlert(id: number): Promise<boolean> {
+    const result = await this.db.delete(keywordAlerts)
+      .where(eq(keywordAlerts.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   async getAggregatedRankTrend(userId: string, days: number): Promise<Array<{date: string, avgRank: number, count: number}>> {

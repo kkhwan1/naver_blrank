@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertKeywordSchema, insertUserSchema, insertGroupSchema, insertKeywordGroupSchema, insertUserSettingsSchema } from "@shared/schema";
+import { insertKeywordSchema, insertUserSchema, insertGroupSchema, insertKeywordGroupSchema, insertUserSettingsSchema, insertKeywordAlertSchema } from "@shared/schema";
 import { NaverAPIClient } from "./naver-client";
 import { SmartBlockParser } from "./smartblock-parser";
 import { NaverHTMLParser } from "./html-parser";
@@ -1164,6 +1164,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('키워드 그룹 조회 오류:', error);
       res.status(500).json({ error: '키워드 그룹 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  // ===== 알림 설정 API =====
+  // 키워드별 알림 설정 조회
+  app.get('/api/keywords/:id/alerts', requireAuth, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const alerts = await storage.getKeywordAlerts(keywordId);
+      res.json(alerts);
+    } catch (error) {
+      console.error('알림 설정 조회 오류:', error);
+      res.status(500).json({ error: '알림 설정 조회 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 알림 설정 생성
+  app.post('/api/keywords/:id/alerts', requireAuth, async (req, res) => {
+    try {
+      const keywordId = parseInt(req.params.id);
+      const parsed = insertKeywordAlertSchema.safeParse({
+        keywordId,
+        ...req.body,
+      });
+      
+      if (!parsed.success) {
+        return res.status(400).json({ error: '잘못된 요청입니다', details: parsed.error });
+      }
+      
+      const alert = await storage.createKeywordAlert(parsed.data);
+      res.json(alert);
+    } catch (error) {
+      console.error('알림 설정 생성 오류:', error);
+      res.status(500).json({ error: '알림 설정 생성 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 알림 설정 업데이트
+  app.patch('/api/alerts/:id', requireAuth, async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id);
+      
+      // keywordId는 업데이트 불가
+      const { keywordId: _ignored, ...updateData } = req.body;
+      
+      const alert = await storage.updateKeywordAlert(alertId, updateData);
+      if (!alert) {
+        return res.status(404).json({ error: '알림 설정을 찾을 수 없습니다' });
+      }
+      res.json(alert);
+    } catch (error) {
+      console.error('알림 설정 업데이트 오류:', error);
+      res.status(500).json({ error: '알림 설정 업데이트 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 알림 설정 삭제
+  app.delete('/api/alerts/:id', requireAuth, async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id);
+      const success = await storage.deleteKeywordAlert(alertId);
+      if (!success) {
+        return res.status(404).json({ error: '알림 설정을 찾을 수 없습니다' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('알림 설정 삭제 오류:', error);
+      res.status(500).json({ error: '알림 설정 삭제 중 오류가 발생했습니다' });
     }
   });
 
