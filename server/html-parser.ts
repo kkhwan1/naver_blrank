@@ -88,111 +88,8 @@ export class NaverHTMLParser {
     console.log('\n=== HTML 파싱 시작 ===');
     console.log(`HTML 길이: ${html.length} 바이트`);
     
-    // JSON 데이터 추출 (통합검색과 동일)
-    const jsonDataMap = new Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }>();
-    try {
-      let totalScriptTags = 0;
-      let scriptsWithCreatedDate = 0;
-      let scriptsWithTitleHref = 0;
-      
-      $('script').each((i, script) => {
-        const scriptContent = $(script).html() || '';
-        totalScriptTags++;
-        
-        if (scriptContent.includes('"createdDate"')) scriptsWithCreatedDate++;
-        if (scriptContent.includes('"titleHref"')) scriptsWithTitleHref++;
-        
-        if (scriptContent.includes('"createdDate"') && scriptContent.includes('"titleHref"')) {
-          console.log(`🔎 [스마트블록] JSON 데이터 발견 가능성 있는 script 태그 (길이: ${scriptContent.length})`);
-          
-          let searchPos = 0;
-          let extractedCount = 0;
-          
-          while (true) {
-            const titleHrefPos = scriptContent.indexOf('"titleHref"', searchPos);
-            if (titleHrefPos === -1) break;
-            
-            let objStart = titleHrefPos;
-            let braceCount = 0;
-            let foundStart = false;
-            
-            for (let i = titleHrefPos; i >= 0; i--) {
-              if (scriptContent[i] === '}') braceCount++;
-              if (scriptContent[i] === '{') {
-                if (braceCount === 0) {
-                  objStart = i;
-                  foundStart = true;
-                  break;
-                }
-                braceCount--;
-              }
-            }
-            
-            if (!foundStart) {
-              searchPos = titleHrefPos + 1;
-              continue;
-            }
-            
-            let objEnd = titleHrefPos;
-            braceCount = 0;
-            let foundEnd = false;
-            
-            for (let i = objStart; i < scriptContent.length; i++) {
-              if (scriptContent[i] === '{') braceCount++;
-              if (scriptContent[i] === '}') {
-                braceCount--;
-                if (braceCount === 0) {
-                  objEnd = i + 1;
-                  foundEnd = true;
-                  break;
-                }
-              }
-            }
-            
-            if (!foundEnd) {
-              searchPos = titleHrefPos + 1;
-              continue;
-            }
-            
-            try {
-              const jsonStr = scriptContent.substring(objStart, objEnd);
-              const data = JSON.parse(jsonStr);
-              
-              if (data.titleHref && data.createdDate) {
-                if (data.titleHref.includes('blog.naver.com')) {
-                  const blogUrl = this.extractBlogUrl(data.titleHref);
-                  
-                  if (blogUrl) {
-                    jsonDataMap.set(blogUrl, {
-                      blogName: data.title || undefined,
-                      createdDate: data.createdDate,
-                      imageSrc: data.imageSrc || undefined
-                    });
-                    extractedCount++;
-                  }
-                }
-              }
-            } catch (e) {
-              // JSON 파싱 실패는 무시
-            }
-            
-            searchPos = objEnd;
-          }
-          
-          console.log(`  → [스마트블록] 추출된 블로그 JSON 객체: ${extractedCount}개`);
-        }
-      });
-      
-      console.log(`📊 [스마트블록] Script 태그 분석: 총 ${totalScriptTags}개, createdDate 포함 ${scriptsWithCreatedDate}개, titleHref 포함 ${scriptsWithTitleHref}개`);
-      
-      if (jsonDataMap.size > 0) {
-        console.log(`📦 [스마트블록] HTML 내부 JSON 데이터 ${jsonDataMap.size}개 추출 성공`);
-      } else {
-        console.log(`⚠️  [스마트블록] HTML 내부 JSON 데이터 추출 실패 - CSS 셀렉터 방식으로 폴백`);
-      }
-    } catch (error) {
-      console.error('[스마트블록] JSON 데이터 추출 오류:', error);
-    }
+    // JSON 데이터 추출 (공유 헬퍼 함수 사용)
+    const jsonDataMap = this.extractJsonDataFromScripts($, '[스마트블록] ');
     
     const NON_BLOG_CATEGORIES = [
       '숏텐츠',
@@ -505,6 +402,113 @@ export class NaverHTMLParser {
     }
   }
 
+  private extractJsonDataFromScripts(
+    $: cheerio.CheerioAPI, 
+    logPrefix: string = ''
+  ): Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }> {
+    const jsonDataMap = new Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }>();
+    
+    try {
+      let totalScriptTags = 0;
+      let scriptsWithCreatedDate = 0;
+      let scriptsWithTitleHref = 0;
+      
+      $('script').each((i, script) => {
+        const scriptContent = $(script).html() || '';
+        totalScriptTags++;
+        
+        if (scriptContent.includes('"createdDate"')) scriptsWithCreatedDate++;
+        if (scriptContent.includes('"titleHref"')) scriptsWithTitleHref++;
+        
+        if (scriptContent.includes('"createdDate"') && scriptContent.includes('"titleHref"')) {
+          console.log(`🔎 ${logPrefix}JSON 데이터 발견 가능성 있는 script 태그 (길이: ${scriptContent.length})`);
+          
+          let searchPos = 0;
+          let extractedCount = 0;
+          
+          while (true) {
+            const titleHrefPos = scriptContent.indexOf('"titleHref"', searchPos);
+            if (titleHrefPos === -1) break;
+            
+            let objStart = titleHrefPos;
+            let braceCount = 0;
+            let foundStart = false;
+            
+            for (let i = titleHrefPos; i >= 0; i--) {
+              if (scriptContent[i] === '}') braceCount++;
+              if (scriptContent[i] === '{') {
+                if (braceCount === 0) {
+                  objStart = i;
+                  foundStart = true;
+                  break;
+                }
+                braceCount--;
+              }
+            }
+            
+            if (!foundStart) {
+              searchPos = titleHrefPos + 1;
+              continue;
+            }
+            
+            let objEnd = titleHrefPos;
+            braceCount = 0;
+            let foundEnd = false;
+            
+            for (let i = objStart; i < scriptContent.length; i++) {
+              if (scriptContent[i] === '{') braceCount++;
+              if (scriptContent[i] === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  objEnd = i + 1;
+                  foundEnd = true;
+                  break;
+                }
+              }
+            }
+            
+            if (!foundEnd) {
+              searchPos = titleHrefPos + 1;
+              continue;
+            }
+            
+            try {
+              const jsonStr = scriptContent.substring(objStart, objEnd);
+              const obj = JSON.parse(jsonStr);
+              
+              if (obj.titleHref && obj.titleHref.includes('blog.naver.com')) {
+                const blogUrl = this.extractBlogUrl(obj.titleHref);
+                if (blogUrl) {
+                  jsonDataMap.set(blogUrl, {
+                    blogName: obj.title,
+                    createdDate: obj.createdDate,
+                    imageSrc: obj.imageSrc,
+                  });
+                  extractedCount++;
+                }
+              }
+            } catch (parseError) {
+              // JSON 파싱 실패 시 조용히 건너뛰기
+            }
+            
+            searchPos = objEnd;
+          }
+          
+          if (extractedCount > 0) {
+            console.log(`→ ${logPrefix}추출된 블로그 JSON 객체: ${extractedCount}개`);
+          }
+        }
+      });
+      
+      console.log(`📊 ${logPrefix}Script 태그 분석: 전체 ${totalScriptTags}개, createdDate 포함 ${scriptsWithCreatedDate}개, titleHref 포함 ${scriptsWithTitleHref}개`);
+      console.log(`📦 ${logPrefix}HTML 내부 JSON 데이터 ${jsonDataMap.size}개 추출 성공`);
+    } catch (error) {
+      console.error(`❌ ${logPrefix}JSON 추출 중 오류:`, error);
+    }
+    
+    return jsonDataMap;
+  }
+
   private extractBlogMetadata($link: cheerio.Cheerio<any>, $: cheerio.CheerioAPI, $container?: cheerio.Cheerio<any>): { blogName?: string; author?: string; publishedDate?: string; description?: string; imageUrl?: string } {
     const metadata: { blogName?: string; author?: string; publishedDate?: string; description?: string; imageUrl?: string } = {};
     
@@ -769,120 +773,8 @@ export class NaverHTMLParser {
       const blogs: BlogResult[] = [];
       const seenUrls = new Set<string>();
       
-      // 패턴 0: HTML 내부 JSON 데이터 추출 시도
-      const jsonDataMap = new Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }>();
-      try {
-        let totalScriptTags = 0;
-        let scriptsWithCreatedDate = 0;
-        let scriptsWithTitleHref = 0;
-        
-        // script 태그에서 JSON 데이터 찾기
-        $('script').each((i, script) => {
-          const scriptContent = $(script).html() || '';
-          totalScriptTags++;
-          
-          if (scriptContent.includes('"createdDate"')) scriptsWithCreatedDate++;
-          if (scriptContent.includes('"titleHref"')) scriptsWithTitleHref++;
-          
-          // JSON 배열 또는 객체 패턴 찾기
-          if (scriptContent.includes('"createdDate"') && scriptContent.includes('"titleHref"')) {
-            console.log(`🔎 JSON 데이터 발견 가능성 있는 script 태그 (길이: ${scriptContent.length})`);
-            
-            // 더 유연한 접근: "titleHref" 키를 찾아서 해당 객체 전체를 추출
-            // 이 방법은 필드 순서, 추가 필드, 이스케이프된 문자에 강건함
-            let searchPos = 0;
-            let extractedCount = 0;
-            
-            while (true) {
-              // "titleHref" 키 찾기
-              const titleHrefPos = scriptContent.indexOf('"titleHref"', searchPos);
-              if (titleHrefPos === -1) break;
-              
-              // 이 키를 포함하는 객체의 시작점 찾기 (역방향으로 '{' 찾기)
-              let objStart = titleHrefPos;
-              let braceCount = 0;
-              let foundStart = false;
-              
-              for (let i = titleHrefPos; i >= 0; i--) {
-                if (scriptContent[i] === '}') braceCount++;
-                if (scriptContent[i] === '{') {
-                  if (braceCount === 0) {
-                    objStart = i;
-                    foundStart = true;
-                    break;
-                  }
-                  braceCount--;
-                }
-              }
-              
-              if (!foundStart) {
-                searchPos = titleHrefPos + 1;
-                continue;
-              }
-              
-              // 객체의 끝점 찾기 (정방향으로 '}' 찾기)
-              let objEnd = titleHrefPos;
-              braceCount = 0;
-              let foundEnd = false;
-              
-              for (let i = objStart; i < scriptContent.length; i++) {
-                if (scriptContent[i] === '{') braceCount++;
-                if (scriptContent[i] === '}') {
-                  braceCount--;
-                  if (braceCount === 0) {
-                    objEnd = i + 1;
-                    foundEnd = true;
-                    break;
-                  }
-                }
-              }
-              
-              if (!foundEnd) {
-                searchPos = titleHrefPos + 1;
-                continue;
-              }
-              
-              // JSON 객체 추출 및 파싱
-              try {
-                const jsonStr = scriptContent.substring(objStart, objEnd);
-                const data = JSON.parse(jsonStr);
-                
-                // 필수 필드 확인 (createdDate, titleHref)
-                if (data.titleHref && data.createdDate) {
-                  if (data.titleHref.includes('blog.naver.com')) {
-                    const blogUrl = this.extractBlogUrl(data.titleHref);
-                    
-                    if (blogUrl) {
-                      jsonDataMap.set(blogUrl, {
-                        blogName: data.title || undefined,
-                        createdDate: data.createdDate,
-                        imageSrc: data.imageSrc || undefined
-                      });
-                      extractedCount++;
-                    }
-                  }
-                }
-              } catch (e) {
-                // JSON 파싱 실패는 무시하고 계속 진행
-              }
-              
-              searchPos = objEnd;
-            }
-            
-            console.log(`  → 추출된 블로그 JSON 객체: ${extractedCount}개`);
-          }
-        });
-        
-        console.log(`📊 Script 태그 분석: 총 ${totalScriptTags}개, createdDate 포함 ${scriptsWithCreatedDate}개, titleHref 포함 ${scriptsWithTitleHref}개`);
-        
-        if (jsonDataMap.size > 0) {
-          console.log(`📦 HTML 내부 JSON 데이터 ${jsonDataMap.size}개 추출 성공`);
-        } else {
-          console.log(`⚠️  HTML 내부 JSON 데이터 추출 실패 - CSS 셀렉터 방식으로 폴백`);
-        }
-      } catch (error) {
-        console.error('JSON 데이터 추출 오류:', error);
-      }
+      // 패턴 0: HTML 내부 JSON 데이터 추출 (공유 헬퍼 함수 사용)
+      const jsonDataMap = this.extractJsonDataFromScripts($, '[통합검색] ');
       
       // 간단한 방법: 모든 blog.naver.com 링크 찾기
       const allBlogLinks = $('a[href*="blog.naver.com"]').toArray();
