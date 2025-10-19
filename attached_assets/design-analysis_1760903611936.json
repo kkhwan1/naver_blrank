@@ -1,0 +1,430 @@
+{
+  "designSystem": {
+    "metadata": {
+      "projectName": "NaverInsight",
+      "referenceDesign": "PandaRank",
+      "primaryColor": "Navy Blue",
+      "createdDate": "2025-10-19",
+      "description": "Comprehensive design system analysis for NaverInsight application based on PandaRank design patterns with Navy Blue color scheme"
+    },
+    "colorSystem": {
+      "primary": {
+        "main": "hsl(220, 90%, 40%)",
+        "hover": "hsl(220, 90%, 35%)",
+        "light": "hsl(220, 90%, 95%)",
+        "description": "Navy Blue - Main brand color for primary actions and emphasis"
+      },
+      "background": {
+        "primary": "hsl(0, 0%, 100%)",
+        "secondary": "hsl(210, 20%, 98%)",
+        "tertiary": "hsl(210, 16%, 93%)",
+        "description": "Light backgrounds with subtle gray tints for hierarchy"
+      },
+      "text": {
+        "primary": "hsl(217, 19%, 27%)",
+        "secondary": "hsl(215, 16%, 47%)",
+        "tertiary": "hsl(215, 20%, 65%)",
+        "description": "Dark gray text colors for optimal readability"
+      },
+      "border": {
+        "default": "hsl(220, 13%, 91%)",
+        "hover": "hsl(220, 13%, 85%)",
+        "active": "hsl(220, 90%, 40%)",
+        "description": "Subtle borders with interactive states"
+      },
+      "semantic": {
+        "success": "hsl(142, 76%, 36%)",
+        "warning": "hsl(38, 92%, 50%)",
+        "error": "hsl(348, 83%, 47%)",
+        "info": "hsl(200, 80%, 50%)",
+        "description": "Semantic colors for status and feedback"
+      }
+    },
+    "typography": {
+      "fontFamily": {
+        "primary": "Pretendard",
+        "fallback": "-apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif",
+        "mono": "SF Mono, Monaco, Inconsolata, 'Roboto Mono', Consolas, 'Courier New', monospace",
+        "description": "Pretendard as primary Korean-optimized font with comprehensive fallback chain"
+      },
+      "fontSize": {
+        "xs": "12px",
+        "sm": "14px",
+        "base": "16px",
+        "lg": "18px",
+        "xl": "20px",
+        "2xl": "24px",
+        "3xl": "28px",
+        "description": "Consistent type scale for hierarchical typography"
+      },
+      "fontWeight": {
+        "regular": 400,
+        "medium": 500,
+        "semibold": 600,
+        "bold": 700,
+        "description": "Font weight scale for emphasis and hierarchy"
+      },
+      "lineHeight": {
+        "tight": 1.25,
+        "normal": 1.5,
+        "relaxed": 1.75,
+        "description": "Line height ratios for different content types"
+      }
+    },
+    "spacing": {
+      "base": "4px",
+      "scale": {
+        "0": "0px",
+        "1": "4px",
+        "2": "8px",
+        "3": "12px",
+        "4": "16px",
+        "5": "20px",
+        "6": "24px",
+        "8": "32px",
+        "10": "40px",
+        "12": "48px",
+        "16": "64px",
+        "20": "80px"
+      },
+      "description": "4px-based spacing system for consistent layout rhythm"
+    },
+    "layout": {
+      "container": {
+        "maxWidth": "1200px",
+        "padding": "16px",
+        "description": "Main content container specifications"
+      },
+      "breakpoints": {
+        "sm": "640px",
+        "md": "768px",
+        "lg": "1024px",
+        "xl": "1280px",
+        "2xl": "1536px",
+        "description": "Responsive design breakpoints"
+      },
+      "grid": {
+        "columns": 12,
+        "gap": "24px",
+        "description": "Grid system for layout structure"
+      }
+    },
+    "components": {
+      "button": {
+        "primary": {
+          "background": "hsl(220, 90%, 40%)",
+          "color": "hsl(0, 0%, 100%)",
+          "hover": "hsl(220, 90%, 35%)",
+          "padding": "10px 20px",
+          "borderRadius": "8px",
+          "fontWeight": 600,
+          "transition": "all 150ms ease"
+        },
+        "secondary": {
+          "background": "hsl(210, 14%, 90%)",
+          "color": "hsl(217, 19%, 27%)",
+          "hover": "hsl(210, 14%, 85%)",
+          "padding": "10px 20px",
+          "borderRadius": "8px",
+          "fontWeight": 600,
+          "transition": "all 150ms ease"
+        },
+        "ghost": {
+          "background": "transparent",
+          "color": "hsl(217, 19%, 27%)",
+          "hover": "hsl(210, 16%, 93%)",
+          "padding": "10px 20px",
+          "borderRadius": "8px",
+          "fontWeight": 500,
+          "transition": "all 150ms ease"
+        },
+        "sizes": {
+          "sm": {
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "height": "32px"
+          },
+          "md": {
+            "padding": "10px 20px",
+            "fontSize": "16px",
+            "height": "40px"
+          },
+          "lg": {
+            "padding": "12px 24px",
+            "fontSize": "18px",
+            "height": "48px"
+          }
+        }
+      },
+      "card": {
+        "background": "hsl(0, 0%, 100%)",
+        "border": "1px solid hsl(220, 13%, 91%)",
+        "borderRadius": "12px",
+        "padding": "20px",
+        "shadow": "0 1px 3px rgba(0, 0, 0, 0.05)",
+        "hover": {
+          "shadow": "0 4px 12px rgba(0, 0, 0, 0.08)",
+          "borderColor": "hsl(220, 13%, 85%)"
+        },
+        "transition": "all 200ms ease"
+      },
+      "badge": {
+        "primary": {
+          "background": "hsl(220, 90%, 95%)",
+          "color": "hsl(220, 90%, 40%)",
+          "borderRadius": "6px",
+          "padding": "4px 12px",
+          "fontSize": "14px",
+          "fontWeight": 500
+        },
+        "success": {
+          "background": "hsl(142, 76%, 95%)",
+          "color": "hsl(142, 76%, 36%)",
+          "borderRadius": "6px",
+          "padding": "4px 12px",
+          "fontSize": "14px",
+          "fontWeight": 500
+        },
+        "warning": {
+          "background": "hsl(38, 92%, 95%)",
+          "color": "hsl(38, 92%, 40%)",
+          "borderRadius": "6px",
+          "padding": "4px 12px",
+          "fontSize": "14px",
+          "fontWeight": 500
+        },
+        "error": {
+          "background": "hsl(348, 83%, 95%)",
+          "color": "hsl(348, 83%, 47%)",
+          "borderRadius": "6px",
+          "padding": "4px 12px",
+          "fontSize": "14px",
+          "fontWeight": 500
+        }
+      },
+      "table": {
+        "header": {
+          "background": "hsl(210, 16%, 93%)",
+          "color": "hsl(217, 19%, 27%)",
+          "fontWeight": 600,
+          "fontSize": "14px",
+          "padding": "12px 16px",
+          "borderBottom": "2px solid hsl(220, 13%, 85%)"
+        },
+        "row": {
+          "background": "hsl(0, 0%, 100%)",
+          "color": "hsl(217, 19%, 27%)",
+          "padding": "12px 16px",
+          "borderBottom": "1px solid hsl(220, 13%, 91%)",
+          "hover": {
+            "background": "hsl(210, 20%, 98%)"
+          }
+        },
+        "cell": {
+          "fontSize": "14px",
+          "lineHeight": 1.5
+        }
+      },
+      "input": {
+        "default": {
+          "background": "hsl(0, 0%, 100%)",
+          "border": "1px solid hsl(220, 13%, 91%)",
+          "borderRadius": "8px",
+          "padding": "10px 16px",
+          "fontSize": "16px",
+          "color": "hsl(217, 19%, 27%)",
+          "placeholder": "hsl(215, 16%, 47%)"
+        },
+        "focus": {
+          "borderColor": "hsl(220, 90%, 40%)",
+          "outline": "2px solid hsla(220, 90%, 40%, 0.1)"
+        },
+        "error": {
+          "borderColor": "hsl(348, 83%, 47%)",
+          "outline": "2px solid hsla(348, 83%, 47%, 0.1)"
+        }
+      },
+      "statCard": {
+        "background": "hsl(0, 0%, 100%)",
+        "border": "1px solid hsl(220, 13%, 91%)",
+        "borderRadius": "12px",
+        "padding": "20px",
+        "shadow": "0 1px 3px rgba(0, 0, 0, 0.05)",
+        "title": {
+          "fontSize": "14px",
+          "color": "hsl(215, 16%, 47%)",
+          "fontWeight": 500,
+          "marginBottom": "8px"
+        },
+        "value": {
+          "fontSize": "28px",
+          "color": "hsl(217, 19%, 27%)",
+          "fontWeight": 700,
+          "lineHeight": 1.2
+        },
+        "trend": {
+          "positive": {
+            "color": "hsl(142, 76%, 36%)",
+            "icon": "↑",
+            "fontSize": "14px"
+          },
+          "negative": {
+            "color": "hsl(348, 83%, 47%)",
+            "icon": "↓",
+            "fontSize": "14px"
+          }
+        }
+      }
+    },
+    "shadows": {
+      "sm": "0 1px 2px rgba(0, 0, 0, 0.05)",
+      "default": "0 1px 3px rgba(0, 0, 0, 0.05)",
+      "md": "0 4px 6px rgba(0, 0, 0, 0.07)",
+      "lg": "0 10px 15px rgba(0, 0, 0, 0.1)",
+      "xl": "0 20px 25px rgba(0, 0, 0, 0.15)",
+      "description": "Elevation system for depth and hierarchy"
+    },
+    "borderRadius": {
+      "sm": "6px",
+      "default": "8px",
+      "md": "12px",
+      "lg": "16px",
+      "xl": "20px",
+      "full": "9999px",
+      "description": "Border radius scale for rounded corners"
+    },
+    "iconSystem": {
+      "sizes": {
+        "xs": "12px",
+        "sm": "16px",
+        "md": "20px",
+        "lg": "24px",
+        "xl": "32px"
+      },
+      "strokeWidth": {
+        "thin": 1,
+        "default": 1.5,
+        "thick": 2
+      },
+      "color": {
+        "default": "hsl(217, 19%, 27%)",
+        "muted": "hsl(215, 16%, 47%)",
+        "primary": "hsl(220, 90%, 40%)"
+      }
+    },
+    "charts": {
+      "colorPalette": [
+        "hsl(220, 90%, 40%)",
+        "hsl(142, 76%, 36%)",
+        "hsl(38, 92%, 50%)",
+        "hsl(200, 80%, 50%)",
+        "hsl(280, 70%, 50%)",
+        "hsl(348, 83%, 47%)"
+      ],
+      "gridColor": "hsl(220, 13%, 91%)",
+      "axisColor": "hsl(215, 16%, 47%)",
+      "tooltipBackground": "hsl(217, 33%, 17%)",
+      "tooltipText": "hsl(0, 0%, 100%)"
+    },
+    "animations": {
+      "duration": {
+        "fast": "150ms",
+        "normal": "200ms",
+        "slow": "300ms"
+      },
+      "easing": {
+        "default": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "in": "cubic-bezier(0.4, 0, 1, 1)",
+        "out": "cubic-bezier(0, 0, 0.2, 1)",
+        "inOut": "cubic-bezier(0.4, 0, 0.2, 1)"
+      },
+      "transitions": {
+        "button": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "card": "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "modal": "all 300ms cubic-bezier(0.4, 0, 0.2, 1)"
+      }
+    },
+    "designPrinciples": [
+      {
+        "principle": "Consistency",
+        "description": "Maintain consistent spacing, colors, and component behaviors throughout the application"
+      },
+      {
+        "principle": "Hierarchy",
+        "description": "Use typography, color, and spacing to create clear visual hierarchy"
+      },
+      {
+        "principle": "Readability",
+        "description": "Ensure text is readable with proper contrast ratios (WCAG AA minimum)"
+      },
+      {
+        "principle": "Clarity",
+        "description": "Use clear labels, tooltips, and feedback for user actions"
+      },
+      {
+        "principle": "Efficiency",
+        "description": "Minimize clicks and cognitive load for common tasks"
+      },
+      {
+        "principle": "Feedback",
+        "description": "Provide immediate visual feedback for all user interactions"
+      }
+    ],
+    "implementation": {
+      "phases": [
+        {
+          "phase": 1,
+          "name": "Foundation",
+          "tasks": [
+            "Update color system in index.css with Navy Blue palette",
+            "Import and configure Pretendard font",
+            "Update spacing variables to 4px-based system",
+            "Configure shadow and border radius systems"
+          ]
+        },
+        {
+          "phase": 2,
+          "name": "Core Components",
+          "tasks": [
+            "Update Button component with new styles",
+            "Update Card component with new shadows and borders",
+            "Update Badge component with semantic colors",
+            "Update Input component with focus states"
+          ]
+        },
+        {
+          "phase": 3,
+          "name": "Layout & Pages",
+          "tasks": [
+            "Update Header with new color scheme",
+            "Update Dashboard stat cards",
+            "Update KeywordTable with improved spacing and hover states",
+            "Update all dialogs and modals"
+          ]
+        },
+        {
+          "phase": 4,
+          "name": "Polish & Testing",
+          "tasks": [
+            "Add transitions and animations",
+            "Test responsive design at all breakpoints",
+            "Verify contrast ratios for accessibility",
+            "Cross-browser testing"
+          ]
+        }
+      ],
+      "filesToModify": [
+        "client/src/index.css",
+        "client/src/components/ui/button.tsx",
+        "client/src/components/ui/card.tsx",
+        "client/src/components/ui/badge.tsx",
+        "client/src/components/ui/input.tsx",
+        "client/src/components/Header.tsx",
+        "client/src/pages/dashboard.tsx",
+        "client/src/components/KeywordTable.tsx",
+        "client/src/components/MeasurementDetailDialog.tsx",
+        "client/src/components/RankTrendChart.tsx"
+      ]
+    }
+  }
+}
