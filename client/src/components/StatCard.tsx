@@ -28,7 +28,7 @@ export default function StatCard({ title, value, icon: Icon, trend }: StatCardPr
           <p className="text-3xl font-bold text-foreground tracking-tight">{value}</p>
           {trend && (
             <div className="flex items-center gap-1.5 mt-2">
-              <span className={`text-sm font-medium ${trend.value >= 0 ? 'text-success' : 'text-destructive'}`}>
+              <span className={`text-sm font-medium ${trend.value >= 0 ? 'text-primary' : 'text-destructive'}`}>
                 {trend.value >= 0 ? '+' : ''}{trend.value}%
               </span>
               <span className="text-xs text-muted-foreground">{trend.label}</span>
