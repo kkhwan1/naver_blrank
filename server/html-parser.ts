@@ -88,6 +88,112 @@ export class NaverHTMLParser {
     console.log('\n=== HTML 파싱 시작 ===');
     console.log(`HTML 길이: ${html.length} 바이트`);
     
+    // JSON 데이터 추출 (통합검색과 동일)
+    const jsonDataMap = new Map<string, { blogName?: string; createdDate?: string; imageSrc?: string }>();
+    try {
+      let totalScriptTags = 0;
+      let scriptsWithCreatedDate = 0;
+      let scriptsWithTitleHref = 0;
+      
+      $('script').each((i, script) => {
+        const scriptContent = $(script).html() || '';
+        totalScriptTags++;
+        
+        if (scriptContent.includes('"createdDate"')) scriptsWithCreatedDate++;
+        if (scriptContent.includes('"titleHref"')) scriptsWithTitleHref++;
+        
+        if (scriptContent.includes('"createdDate"') && scriptContent.includes('"titleHref"')) {
+          console.log(`🔎 [스마트블록] JSON 데이터 발견 가능성 있는 script 태그 (길이: ${scriptContent.length})`);
+          
+          let searchPos = 0;
+          let extractedCount = 0;
+          
+          while (true) {
+            const titleHrefPos = scriptContent.indexOf('"titleHref"', searchPos);
+            if (titleHrefPos === -1) break;
+            
+            let objStart = titleHrefPos;
+            let braceCount = 0;
+            let foundStart = false;
+            
+            for (let i = titleHrefPos; i >= 0; i--) {
+              if (scriptContent[i] === '}') braceCount++;
+              if (scriptContent[i] === '{') {
+                if (braceCount === 0) {
+                  objStart = i;
+                  foundStart = true;
+                  break;
+                }
+                braceCount--;
+              }
+            }
+            
+            if (!foundStart) {
+              searchPos = titleHrefPos + 1;
+              continue;
+            }
+            
+            let objEnd = titleHrefPos;
+            braceCount = 0;
+            let foundEnd = false;
+            
+            for (let i = objStart; i < scriptContent.length; i++) {
+              if (scriptContent[i] === '{') braceCount++;
+              if (scriptContent[i] === '}') {
+                braceCount--;
+                if (braceCount === 0) {
+                  objEnd = i + 1;
+                  foundEnd = true;
+                  break;
+                }
+              }
+            }
+            
+            if (!foundEnd) {
+              searchPos = titleHrefPos + 1;
+              continue;
+            }
+            
+            try {
+              const jsonStr = scriptContent.substring(objStart, objEnd);
+              const data = JSON.parse(jsonStr);
+              
+              if (data.titleHref && data.createdDate) {
+                if (data.titleHref.includes('blog.naver.com')) {
+                  const blogUrl = this.extractBlogUrl(data.titleHref);
+                  
+                  if (blogUrl) {
+                    jsonDataMap.set(blogUrl, {
+                      blogName: data.title || undefined,
+                      createdDate: data.createdDate,
+                      imageSrc: data.imageSrc || undefined
+                    });
+                    extractedCount++;
+                  }
+                }
+              }
+            } catch (e) {
+              // JSON 파싱 실패는 무시
+            }
+            
+            searchPos = objEnd;
+          }
+          
+          console.log(`  → [스마트블록] 추출된 블로그 JSON 객체: ${extractedCount}개`);
+        }
+      });
+      
+      console.log(`📊 [스마트블록] Script 태그 분석: 총 ${totalScriptTags}개, createdDate 포함 ${scriptsWithCreatedDate}개, titleHref 포함 ${scriptsWithTitleHref}개`);
+      
+      if (jsonDataMap.size > 0) {
+        console.log(`📦 [스마트블록] HTML 내부 JSON 데이터 ${jsonDataMap.size}개 추출 성공`);
+      } else {
+        console.log(`⚠️  [스마트블록] HTML 내부 JSON 데이터 추출 실패 - CSS 셀렉터 방식으로 폴백`);
+      }
+    } catch (error) {
+      console.error('[스마트블록] JSON 데이터 추출 오류:', error);
+    }
+    
     const NON_BLOG_CATEGORIES = [
       '숏텐츠',
       '네이버 클립',
@@ -197,8 +303,21 @@ export class NaverHTMLParser {
           // Phase 1: CSS visibility 체크
           const visibilityCheck = this.checkElementVisibility($link, $);
           
-          // 블로그 메타정보 추출
+          // 블로그 메타정보 추출 (JSON 우선, CSS 셀렉터 폴백)
           const metadata = this.extractBlogMetadata($link, $, $container);
+          const jsonData = jsonDataMap.get(blogUrl);
+          
+          const finalMetadata = {
+            blogName: jsonData?.blogName || metadata.blogName,
+            author: metadata.author, // JSON에는 author 정보 없음
+            publishedDate: jsonData?.createdDate || metadata.publishedDate,
+            description: metadata.description,
+            imageUrl: jsonData?.imageSrc || metadata.imageUrl,
+          };
+          
+          if (jsonData) {
+            console.log(`✨ [스마트블록] JSON 메타데이터 적용: "${finalMetadata.blogName}" (${finalMetadata.publishedDate})`);
+          }
           
           categoryBlogs.push({
             url: blogUrl,
@@ -206,11 +325,11 @@ export class NaverHTMLParser {
             position: categoryBlogs.length,
             isVisible: visibilityCheck.isVisible,
             hiddenReason: visibilityCheck.hiddenReason,
-            blogName: metadata.blogName,
-            author: metadata.author,
-            publishedDate: metadata.publishedDate,
-            description: metadata.description,
-            imageUrl: metadata.imageUrl,
+            blogName: finalMetadata.blogName,
+            author: finalMetadata.author,
+            publishedDate: finalMetadata.publishedDate,
+            description: finalMetadata.description,
+            imageUrl: finalMetadata.imageUrl,
           });
           
           if (!seenUrls.has(blogUrl)) {
@@ -221,11 +340,11 @@ export class NaverHTMLParser {
               position: blogResults.length,
               isVisible: visibilityCheck.isVisible,
               hiddenReason: visibilityCheck.hiddenReason,
-              blogName: metadata.blogName,
-              author: metadata.author,
-              publishedDate: metadata.publishedDate,
-              description: metadata.description,
-              imageUrl: metadata.imageUrl,
+              blogName: finalMetadata.blogName,
+              author: finalMetadata.author,
+              publishedDate: finalMetadata.publishedDate,
+              description: finalMetadata.description,
+              imageUrl: finalMetadata.imageUrl,
             });
           }
         }
@@ -261,8 +380,21 @@ export class NaverHTMLParser {
           // Phase 1: CSS visibility 체크
           const visibilityCheck = this.checkElementVisibility($link, $);
           
-          // 블로그 메타정보 추출
+          // 블로그 메타정보 추출 (JSON 우선, CSS 셀렉터 폴백)
           const metadata = this.extractBlogMetadata($link, $, undefined);
+          const jsonData = jsonDataMap.get(blogUrl);
+          
+          const finalMetadata = {
+            blogName: jsonData?.blogName || metadata.blogName,
+            author: metadata.author,
+            publishedDate: jsonData?.createdDate || metadata.publishedDate,
+            description: metadata.description,
+            imageUrl: jsonData?.imageSrc || metadata.imageUrl,
+          };
+          
+          if (jsonData) {
+            console.log(`✨ [스마트블록 폴백] JSON 메타데이터 적용: "${finalMetadata.blogName}" (${finalMetadata.publishedDate})`);
+          }
           
           blogResults.push({
             url: blogUrl,
@@ -270,11 +402,11 @@ export class NaverHTMLParser {
             position: blogResults.length,
             isVisible: visibilityCheck.isVisible,
             hiddenReason: visibilityCheck.hiddenReason,
-            blogName: metadata.blogName,
-            author: metadata.author,
-            publishedDate: metadata.publishedDate,
-            description: metadata.description,
-            imageUrl: metadata.imageUrl,
+            blogName: finalMetadata.blogName,
+            author: finalMetadata.author,
+            publishedDate: finalMetadata.publishedDate,
+            description: finalMetadata.description,
+            imageUrl: finalMetadata.imageUrl,
           });
         }
       }
