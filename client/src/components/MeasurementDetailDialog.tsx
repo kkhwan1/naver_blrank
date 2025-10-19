@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +9,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { ExternalLink, AlertTriangle, Shield, Ban, Clock, FileWarning, Info, CheckCircle2, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ExternalLink, AlertTriangle, Shield, Ban, Clock, FileWarning, Info, CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import KeywordStatsTab from './KeywordStatsTab';
@@ -68,6 +70,8 @@ export default function MeasurementDetailDialog({
   keyword,
   targetUrl 
 }: MeasurementDetailDialogProps) {
+  const [showUnifiedSearch, setShowUnifiedSearch] = useState(false);
+  
   const { data: measurements = [], isLoading } = useQuery<Measurement[]>({
     queryKey: ['/api/measurements', keywordId],
     queryFn: async () => {
@@ -130,12 +134,11 @@ export default function MeasurementDetailDialog({
         </DialogHeader>
 
         <Tabs defaultValue="measurement" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="measurement" data-testid="tab-measurement">측정 결과</TabsTrigger>
             <TabsTrigger value="chart" data-testid="tab-chart">순위 변동</TabsTrigger>
             <TabsTrigger value="stats" data-testid="tab-stats">키워드 통계</TabsTrigger>
             <TabsTrigger value="blogs" data-testid="tab-blogs">블로그 검색</TabsTrigger>
-            <TabsTrigger value="unified" data-testid="tab-unified">통합검색</TabsTrigger>
           </TabsList>
 
           <TabsContent value="measurement" className="mt-4">
@@ -285,7 +288,27 @@ export default function MeasurementDetailDialog({
 
                 {categories.length > 0 && (
                   <Card className="p-4 space-y-3">
-                    <h3 className="font-semibold">스마트블록 카테고리 상세</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">스마트블록 카테고리 상세</h3>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowUnifiedSearch(!showUnifiedSearch)}
+                        data-testid="button-toggle-unified-search"
+                      >
+                        {showUnifiedSearch ? (
+                          <>
+                            <ChevronUp className="w-4 h-4 mr-1" />
+                            통합검색 숨기기
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4 mr-1" />
+                            통합검색 보기
+                          </>
+                        )}
+                      </Button>
+                    </div>
                     <div className="space-y-3">
                       {categories.map((category, idx) => (
                         <div key={idx} className="p-3 border rounded-md space-y-2">
@@ -383,6 +406,17 @@ export default function MeasurementDetailDialog({
                   </Card>
                 )}
 
+                {/* 통합검색 섹션 (토글) */}
+                {showUnifiedSearch && (
+                  <div className="mt-4">
+                    <KeywordUnifiedSearchTab 
+                      keywordId={keywordId} 
+                      keyword={keyword}
+                      targetUrl={targetUrl}
+                    />
+                  </div>
+                )}
+
                 {measurements.length > 1 && (
                   <Card className="p-4 space-y-3">
                     <h3 className="font-semibold">최근 측정 기록</h3>
@@ -427,14 +461,6 @@ export default function MeasurementDetailDialog({
 
           <TabsContent value="blogs" className="mt-4">
             <KeywordBlogsTab keywordId={keywordId} keyword={keyword} />
-          </TabsContent>
-
-          <TabsContent value="unified" className="mt-4">
-            <KeywordUnifiedSearchTab 
-              keywordId={keywordId} 
-              keyword={keyword}
-              targetUrl={targetUrl}
-            />
           </TabsContent>
         </Tabs>
       </DialogContent>
