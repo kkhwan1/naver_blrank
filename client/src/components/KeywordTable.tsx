@@ -199,7 +199,7 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
               return (
                 <TableRow
                   key={keyword.id}
-                  className={`cursor-pointer hover-elevate ${isOutOfRank ? 'ring-2 ring-destructive' : ''}`}
+                  className={`cursor-pointer hover-elevate ${isOutOfRank ? 'border-l-4 border-l-destructive' : ''}`}
                   onClick={() => onRowClick?.(keyword.id)}
                   data-testid={`keyword-row-${keyword.id}`}
                 >
