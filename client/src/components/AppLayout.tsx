@@ -1,7 +1,10 @@
 import { useLocation } from "wouter";
 import { Link } from "wouter";
-import { LayoutDashboard, BarChart3, FolderOpen, Settings } from "lucide-react";
+import { LayoutDashboard, BarChart3, FolderOpen, Settings, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -9,6 +12,13 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
+
+  // 알림 개수 조회
+  const { data: alertsCount = 0 } = useQuery<number>({
+    queryKey: ['/api/alerts/count'],
+    select: (data: any) => data?.count || 0,
+    refetchInterval: 60000, // 1분마다 갱신
+  });
 
   const navItems = [
     {
@@ -42,7 +52,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* 웹 헤더 탭 네비게이션 (md 이상) */}
       <header className="hidden md:block border-b bg-background">
         <div className="container max-w-7xl mx-auto px-4">
-          <nav className="flex items-center h-14">
+          <nav className="flex items-center justify-between h-14">
             <div className="flex items-center gap-6">
               <Link href="/">
                 <div className="font-bold text-lg cursor-pointer text-primary">blrank</div>
@@ -69,6 +79,25 @@ export function AppLayout({ children }: AppLayoutProps) {
                   );
                 })}
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative"
+                data-testid="button-alerts"
+              >
+                <Bell className="h-5 w-5" />
+                {alertsCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 flex items-center justify-center text-xs"
+                    data-testid="badge-alerts-count"
+                  >
+                    {alertsCount > 99 ? '99+' : alertsCount}
+                  </Badge>
+                )}
+              </Button>
             </div>
           </nav>
         </div>

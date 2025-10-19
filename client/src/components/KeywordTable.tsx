@@ -34,6 +34,13 @@ import RankBadge from './RankBadge';
 import ChangeIndicator from './ChangeIndicator';
 import { MoreVertical, ExternalLink, Info, LineChart, Trash2, FileText, TrendingUp, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface SmartblockCategory {
   categoryName: string;
@@ -150,120 +157,44 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
 
   return (
     <div className="space-y-3">
-      {/* 순위 범위 & 측정 날짜 필터 */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">순위 범위</span>
-          <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
-            <Button
-              variant={rankFilter === 'all' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleRankFilterChange('all')}
-              data-testid="filter-rank-all"
-            >
-              전체
-            </Button>
-            <Button
-              variant={rankFilter === 'rank1' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleRankFilterChange('rank1')}
-              data-testid="filter-rank-1"
-            >
-              1위
-            </Button>
-            <Button
-              variant={rankFilter === 'rank1-3' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleRankFilterChange('rank1-3')}
-              data-testid="filter-rank-1-3"
-            >
-              1-3위
-            </Button>
-            <Button
-              variant={rankFilter === 'rank4plus' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleRankFilterChange('rank4plus')}
-              data-testid="filter-rank-4plus"
-            >
-              4위 이상
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">측정 날짜</span>
-          <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
-            <Button
-              variant={dateFilter === 'all' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleDateFilterChange('all')}
-              data-testid="filter-date-all"
-            >
-              전체
-            </Button>
-            <Button
-              variant={dateFilter === 'today' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleDateFilterChange('today')}
-              data-testid="filter-date-today"
-            >
-              오늘
-            </Button>
-            <Button
-              variant={dateFilter === '7days' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleDateFilterChange('7days')}
-              data-testid="filter-date-7days"
-            >
-              최근 7일
-            </Button>
-            <Button
-              variant={dateFilter === '30days' ? 'default' : 'secondary'}
-              size="sm"
-              onClick={() => handleDateFilterChange('30days')}
-              data-testid="filter-date-30days"
-            >
-              최근 30일
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 변동 추세 필터 및 검색 */}
+      {/* 필터 및 검색 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex gap-2 overflow-x-auto w-full sm:w-auto">
-          <Button
-            variant={trendFilter === 'all' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleTrendFilterChange('all')}
-            data-testid="filter-all"
-          >
-            전체
-          </Button>
-          <Button
-            variant={trendFilter === 'up' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleTrendFilterChange('up')}
-            data-testid="filter-up"
-          >
-            상승
-          </Button>
-          <Button
-            variant={trendFilter === 'down' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleTrendFilterChange('down')}
-            data-testid="filter-down"
-          >
-            하락
-          </Button>
-          <Button
-            variant={trendFilter === 'stable' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleTrendFilterChange('stable')}
-            data-testid="filter-stable"
-          >
-            유지
-          </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <Select value={rankFilter} onValueChange={handleRankFilterChange}>
+            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-rank-filter">
+              <SelectValue placeholder="순위 범위" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체</SelectItem>
+              <SelectItem value="rank1">1위</SelectItem>
+              <SelectItem value="rank1-3">1-3위</SelectItem>
+              <SelectItem value="rank4plus">4위 이상</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={dateFilter} onValueChange={handleDateFilterChange}>
+            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-date-filter">
+              <SelectValue placeholder="측정 날짜" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체</SelectItem>
+              <SelectItem value="today">오늘</SelectItem>
+              <SelectItem value="7days">최근 7일</SelectItem>
+              <SelectItem value="30days">최근 30일</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={trendFilter} onValueChange={handleTrendFilterChange}>
+            <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-trend-filter">
+              <SelectValue placeholder="변동 추세" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체</SelectItem>
+              <SelectItem value="up">상승</SelectItem>
+              <SelectItem value="down">하락</SelectItem>
+              <SelectItem value="stable">유지</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="flex items-center gap-3 w-full sm:w-auto">

@@ -59,6 +59,7 @@ export interface IStorage {
   getKeywordRecommendation(keywordId: number): Promise<KeywordRecommendation | undefined>;
   saveKeywordRecommendation(recommendation: InsertKeywordRecommendation): Promise<KeywordRecommendation>;
   
+  getAllKeywordAlerts(): Promise<KeywordAlert[]>;
   getKeywordAlerts(keywordId: number): Promise<KeywordAlert[]>;
   createKeywordAlert(alert: InsertKeywordAlert): Promise<KeywordAlert>;
   updateKeywordAlert(id: number, data: Partial<InsertKeywordAlert>): Promise<KeywordAlert | undefined>;
@@ -409,6 +410,10 @@ export class MemStorage implements IStorage {
     };
     this.recommendations.set(id, recommendation);
     return recommendation;
+  }
+
+  async getAllKeywordAlerts(): Promise<KeywordAlert[]> {
+    return Array.from(this.alerts.values());
   }
 
   async getKeywordAlerts(keywordId: number): Promise<KeywordAlert[]> {
@@ -765,6 +770,10 @@ class PostgresStorage implements IStorage {
       .values(data)
       .returning();
     return result[0];
+  }
+
+  async getAllKeywordAlerts(): Promise<KeywordAlert[]> {
+    return await this.db.select().from(keywordAlerts);
   }
 
   async getKeywordAlerts(keywordId: number): Promise<KeywordAlert[]> {

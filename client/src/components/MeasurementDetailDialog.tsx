@@ -16,6 +16,7 @@ import { Loader2 } from 'lucide-react';
 import KeywordStatsTab from './KeywordStatsTab';
 import KeywordBlogsTab from './KeywordBlogsTab';
 import KeywordUnifiedSearchTab from './KeywordUnifiedSearchTab';
+import KeywordAlertsTab from './KeywordAlertsTab';
 import { RankingChart } from './RankingChart';
 
 interface SmartblockCategory {
@@ -134,11 +135,12 @@ export default function MeasurementDetailDialog({
         </DialogHeader>
 
         <Tabs defaultValue="measurement" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="measurement" data-testid="tab-measurement">측정 결과</TabsTrigger>
             <TabsTrigger value="chart" data-testid="tab-chart">순위 변동</TabsTrigger>
             <TabsTrigger value="stats" data-testid="tab-stats">키워드 통계</TabsTrigger>
             <TabsTrigger value="blogs" data-testid="tab-blogs">블로그 검색</TabsTrigger>
+            <TabsTrigger value="alerts" data-testid="tab-alerts">알림 설정</TabsTrigger>
           </TabsList>
 
           <TabsContent value="measurement" className="mt-4">
@@ -504,6 +506,10 @@ export default function MeasurementDetailDialog({
 
           <TabsContent value="blogs" className="mt-4">
             <KeywordBlogsTab keywordId={keywordId} keyword={keyword} />
+          </TabsContent>
+
+          <TabsContent value="alerts" className="mt-4">
+            <KeywordAlertsTab keywordId={keywordId} keyword={keyword} />
           </TabsContent>
         </Tabs>
       </DialogContent>

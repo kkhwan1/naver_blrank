@@ -1168,6 +1168,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== 알림 설정 API =====
+  // 전체 활성 알림 개수 조회
+  app.get('/api/alerts/count', requireAuth, async (req, res) => {
+    try {
+      const alerts = await storage.getAllKeywordAlerts();
+      const activeCount = alerts.filter(a => a.isActive).length;
+      res.json({ count: activeCount });
+    } catch (error) {
+      console.error('알림 개수 조회 오류:', error);
+      res.status(500).json({ error: '알림 개수 조회 중 오류가 발생했습니다' });
+    }
+  });
+
   // 키워드별 알림 설정 조회
   app.get('/api/keywords/:id/alerts', requireAuth, async (req, res) => {
     try {
