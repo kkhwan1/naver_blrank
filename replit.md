@@ -128,6 +128,16 @@ The project uses a monorepo structure with shared TypeScript types between the f
   
 - **Code Quality**:
   - **Refactored to shared helper**: `extractJsonDataFromScripts()` eliminates ~210 lines of duplication
+  
+- **Smart Block Category Filtering** (✅ October 19, 2025):
+  - Enhanced NON_BLOG_CATEGORIES filter to exclude: "뉴스", "콘텐츠", "인플루언서 참여 콘텐츠", "놓치기 아쉬운 콘텐츠", "브랜드 콘텐츠"
+  - Prevents non-blog Smart Block categories from appearing in results
+  
+- **Metadata Extraction Quality Improvements** (✅ October 19, 2025):
+  - Added UI_KEYWORDS filter: ['정렬', '관련도순', '최신순', 'Keep', '저장', '바로가기', '접기']
+  - Minimum blogName length: 3 characters
+  - Prevents UI text pollution in blog metadata (e.g., "정렬  관련도순최신순")
+  - Ensures clean metadata extraction: actual blog names only
   - DRY principle: Same logic used for both Smart Block and Unified Search
   - Maintainability: Single source of truth for JSON extraction algorithm
   - Logging: Contextual log prefixes distinguish Smart Block vs Unified Search
