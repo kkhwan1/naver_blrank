@@ -112,7 +112,6 @@ export class NaverHTMLParser {
       '짧은 즐거움 네이버 클립',
       'NAVER NOW',
       '뉴스',
-      '콘텐츠',
       '놓치기 아쉬운 콘텐츠',
     ];
     
