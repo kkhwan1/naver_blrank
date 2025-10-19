@@ -496,19 +496,27 @@ export class NaverHTMLParser {
                   }
                   
                   // description: content 또는 contentEllipsis 사용
-                  const description = obj.content || obj.contentEllipsis || obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc || obj.desc || obj.text;
+                  let description = obj.content || obj.contentEllipsis || obj.snippet || obj.contents || obj.description || obj.summary || obj.dsc || obj.desc || obj.text;
                   
-                  // date: sourceProfile 안에 있을 수 있음
-                  const date = obj.sourceProfile?.createDate || obj.sourceProfile?.date || obj.createdDate || obj.date || obj.publishDate || obj.regDate || obj.writeDate || obj.postDate;
+                  // date: sourceProfile.createdDate 사용
+                  const date = obj.sourceProfile?.createdDate || obj.sourceProfile?.date || obj.createdDate || obj.date || obj.publishDate || obj.regDate || obj.writeDate || obj.postDate;
                   
-                  // imageSrc: images 배열의 첫 번째 이미지
-                  const image = (obj.images && obj.images.length > 0) ? obj.images[0] : (obj.imageSrc || obj.imageUrl || obj.thumbnail || obj.thumbUrl || obj.image);
+                  // imageSrc: images 배열의 첫 번째 이미지 (객체이므로 .imageSrc 접근)
+                  const image = (obj.images && obj.images.length > 0) ? obj.images[0].imageSrc : (obj.imageSrc || obj.imageUrl || obj.thumbnail || obj.thumbUrl || obj.image);
+                  
+                  // HTML 태그 제거 (특히 <mark> 태그)
+                  let cleanTitle = obj.title || '';
+                  let cleanDescription = description || '';
+                  
+                  // <mark>, </mark>, &lt;mark&gt;, &lt;/mark&gt; 모두 제거
+                  cleanTitle = cleanTitle.replace(/<\/?mark>/g, '').replace(/&lt;\/?mark&gt;/g, '');
+                  cleanDescription = cleanDescription.replace(/<\/?mark>/g, '').replace(/&lt;\/?mark&gt;/g, '');
                   
                   jsonDataMap.set(blogUrl, {
-                    blogName: obj.title,
+                    blogName: cleanTitle,
                     createdDate: date,
                     imageSrc: image,
-                    description: description,
+                    description: cleanDescription,
                   });
                   extractedCount++;
                 }
