@@ -1,23 +1,32 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPgSimple from "connect-pg-simple";
 import passport from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { MeasurementScheduler } from "./scheduler";
 import bcrypt from "bcrypt";
+import postgres from "postgres";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Session configuration with memory store (Supabase compatible)
-const MemoryStore = createMemoryStore(session);
+// PostgreSQL session store for production stability
+const PgStore = connectPgSimple(session);
+const sessionClient = postgres(process.env.DATABASE_URL!, {
+  max: 1,
+});
+
 app.use(
   session({
-    store: new MemoryStore({
-      checkPeriod: 86400000, // 24 hours
+    store: new PgStore({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+      },
+      tableName: 'sessions',
+      createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET || "naver-blog-rank-tracker-secret-key",
     resave: false,
@@ -67,15 +76,15 @@ app.use((req, res, next) => {
 // Auto-create admin account on startup if it doesn't exist
 async function ensureAdminAccount() {
   try {
-    const existingAdmin = await storage.getUserByUsername('admin');
+    const existingAdmin = await storage.getUserByUsername('lee.kkhwan@gmail.com');
     if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
+      const hashedPassword = await bcrypt.hash('rnrghks12', 10);
       await storage.createUser({
-        username: 'admin',
+        username: 'lee.kkhwan@gmail.com',
         password: hashedPassword,
         role: 'admin',
       });
-      log('✅ Default admin account created: admin / admin123');
+      log('✅ Admin account created: lee.kkhwan@gmail.com');
     }
   } catch (error) {
     log('Failed to create admin account: ' + error);

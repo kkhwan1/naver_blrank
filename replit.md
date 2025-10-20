@@ -14,7 +14,7 @@ The frontend uses React 18+ with Vite and Wouter for routing. UI components are 
 
 ### Backend
 
-The backend is built with Node.js, Express.js, and TypeScript, using tsx for development and esbuild for production. It provides RESTful API endpoints for managing keywords and measurements. Data is stored in PostgreSQL via Supabase (Seoul region) using Drizzle ORM, with an in-memory fallback for development. A key component is the HTML parser, utilizing Cheerio to accurately detect Smart Block rankings using the `fds-comps-footer-more-subject` CSS selector, offering high accuracy and performance. An automated `node-cron` scheduler allows configurable measurement intervals (1h, 6h, 12h, 24h) per keyword. The system also extracts comprehensive blog metadata and JSON data from Naver HTML for improved data coverage and includes a keyword recommendation caching system.
+The backend is built with Node.js, Express.js, and TypeScript, using tsx for development and esbuild for production. It provides RESTful API endpoints for managing keywords and measurements. Data is stored in Replit's built-in PostgreSQL database using Drizzle ORM. Sessions are persisted in PostgreSQL for production stability, ensuring login sessions survive server restarts. A key component is the HTML parser, utilizing Cheerio to accurately detect Smart Block rankings using the `fds-comps-footer-more-subject` CSS selector, offering high accuracy and performance. An automated `node-cron` scheduler allows configurable measurement intervals (1h, 6h, 12h, 24h) per keyword. The system also extracts comprehensive blog metadata and JSON data from Naver HTML for improved data coverage and includes a keyword recommendation caching system.
 
 ### Data Models
 
@@ -47,7 +47,6 @@ The project employs a monorepo structure with shared TypeScript types. Component
 - **postgres** (PostgreSQL driver)
 
 ### External Services & APIs
-- **Supabase** (PostgreSQL database, Seoul region)
 - **SerpAPI** (fallback for general search scraping)
 - **Naver Search Ad API** (for keyword search volume and related keywords)
 
