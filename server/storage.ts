@@ -528,6 +528,15 @@ class PostgresStorage implements IStorage {
     this.db = drizzle(client);
   }
 
+  // Helper function to remove undefined values for PostgreSQL compatibility
+  // This prevents "UNDEFINED_VALUE: Undefined values are not allowed" errors
+  // while preserving existing values during updates and allowing defaults during inserts
+  private cleanData<T extends Record<string, any>>(data: T): any {
+    return Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== undefined)
+    );
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     return result[0];
@@ -599,14 +608,14 @@ class PostgresStorage implements IStorage {
 
   async createKeyword(insertKeyword: InsertKeyword, userId: string): Promise<Keyword> {
     const result = await this.db.insert(keywords)
-      .values({ ...insertKeyword, userId })
+      .values(this.cleanData({ ...insertKeyword, userId }))
       .returning();
     return result[0];
   }
 
   async updateKeyword(id: number, data: Partial<InsertKeyword>, userId: string): Promise<Keyword | undefined> {
     const result = await this.db.update(keywords)
-      .set({ ...data, updatedAt: new Date() })
+      .set(this.cleanData({ ...data, updatedAt: new Date() }))
       .where(and(eq(keywords.id, id), eq(keywords.userId, userId)))
       .returning();
     return result[0];
@@ -715,13 +724,13 @@ class PostgresStorage implements IStorage {
   }
 
   async createGroup(insertGroup: InsertGroup, userId: string): Promise<Group> {
-    const result = await this.db.insert(groups).values({ ...insertGroup, userId }).returning();
+    const result = await this.db.insert(groups).values(this.cleanData({ ...insertGroup, userId })).returning();
     return result[0];
   }
 
   async updateGroup(id: number, data: Partial<InsertGroup>, userId: string): Promise<Group | undefined> {
     const result = await this.db.update(groups)
-      .set({ ...data, updatedAt: new Date() })
+      .set(this.cleanData({ ...data, updatedAt: new Date() }))
       .where(and(eq(groups.id, id), eq(groups.userId, userId)))
       .returning();
     return result[0];
@@ -805,13 +814,13 @@ class PostgresStorage implements IStorage {
     
     if (existing) {
       const result = await this.db.update(userSettings)
-        .set({ ...settingsData, updatedAt: new Date() })
+        .set(this.cleanData({ ...settingsData, updatedAt: new Date() }))
         .where(eq(userSettings.userId, userId))
         .returning();
       return result[0];
     } else {
       const result = await this.db.insert(userSettings)
-        .values({ userId, ...settingsData })
+        .values(this.cleanData({ userId, ...settingsData }))
         .returning();
       return result[0];
     }
@@ -828,7 +837,7 @@ class PostgresStorage implements IStorage {
 
   async saveKeywordRecommendation(data: InsertKeywordRecommendation): Promise<KeywordRecommendation> {
     const result = await this.db.insert(keywordRecommendations)
-      .values(data)
+      .values(this.cleanData(data))
       .returning();
     return result[0];
   }
@@ -845,14 +854,14 @@ class PostgresStorage implements IStorage {
 
   async createKeywordAlert(data: InsertKeywordAlert): Promise<KeywordAlert> {
     const result = await this.db.insert(keywordAlerts)
-      .values(data)
+      .values(this.cleanData(data))
       .returning();
     return result[0];
   }
 
   async updateKeywordAlert(id: number, data: Partial<InsertKeywordAlert>): Promise<KeywordAlert | undefined> {
     const result = await this.db.update(keywordAlerts)
-      .set({ ...data, updatedAt: new Date() })
+      .set(this.cleanData({ ...data, updatedAt: new Date() }))
       .where(eq(keywordAlerts.id, id))
       .returning();
     return result[0];
