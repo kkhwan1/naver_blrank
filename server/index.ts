@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { MeasurementScheduler } from "./scheduler";
+import bcrypt from "bcrypt";
 
 const app = express();
 app.use(express.json());
@@ -63,7 +64,28 @@ app.use((req, res, next) => {
   next();
 });
 
+// Auto-create admin account on startup if it doesn't exist
+async function ensureAdminAccount() {
+  try {
+    const existingAdmin = await storage.getUserByUsername('admin');
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      await storage.createUser({
+        username: 'admin',
+        password: hashedPassword,
+        role: 'admin',
+      });
+      log('✅ Default admin account created: admin / admin123');
+    }
+  } catch (error) {
+    log('Failed to create admin account: ' + error);
+  }
+}
+
 (async () => {
+  // Ensure admin account exists before starting server
+  await ensureAdminAccount();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
