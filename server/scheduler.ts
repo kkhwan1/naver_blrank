@@ -60,8 +60,15 @@ export class MeasurementScheduler {
     try {
       console.log(`Running measurements for interval: ${interval}`);
       
-      // Get all active keywords with this interval
-      const allKeywords = await this.storage.getKeywords();
+      // Get all keywords from all users with this interval
+      const allUsers = await this.storage.getAllUsers();
+      let allKeywords: any[] = [];
+      
+      for (const user of allUsers) {
+        const userKeywords = await this.storage.getKeywordsByUser(user.id);
+        allKeywords = allKeywords.concat(userKeywords);
+      }
+      
       const keywords = allKeywords.filter(
         k => k.isActive && k.measurementInterval === interval
       );
