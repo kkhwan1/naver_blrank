@@ -180,108 +180,101 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
       );
     }
 
-    if (!statsData?.stats) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          키워드 통계 데이터가 없습니다
-        </div>
-      );
-    }
-
-    const stats = statsData.stats;
-    const pcVolume = parseSearchVolume(stats.monthlyPcQcCnt);
-    const mobileVolume = parseSearchVolume(stats.monthlyMobileQcCnt);
-    const totalSearchVolume = pcVolume + mobileVolume;
-    const totalClicks = stats.monthlyAvePcClkCnt + stats.monthlyAveMobileClkCnt;
-    const mobileRatio = totalSearchVolume > 0 ? (mobileVolume / totalSearchVolume) : 0;
-    const competition = getCompetitionLevel(stats.compIdx);
-
     return (
       <div className="space-y-4">
-        <Card className="p-4">
-          <h3 className="font-semibold mb-4">키워드: {keyword}</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-md">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">월간 총 검색량</p>
-                  <p className="text-2xl font-bold">{formatNumber(totalSearchVolume)}</p>
-                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                    <span>PC: {typeof stats.monthlyPcQcCnt === 'string' ? stats.monthlyPcQcCnt : formatNumber(stats.monthlyPcQcCnt)}</span>
-                    <span>모바일: {typeof stats.monthlyMobileQcCnt === 'string' ? stats.monthlyMobileQcCnt : formatNumber(stats.monthlyMobileQcCnt)}</span>
+        {statsData?.stats ? (
+          <Card className="p-4">
+            <h3 className="font-semibold mb-4">키워드: {keyword}</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md">
+                    <TrendingUp className="w-5 h-5 text-primary" />
                   </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-md">
-                  <MousePointer className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">월간 평균 클릭수</p>
-                  <p className="text-2xl font-bold">{formatNumber(totalClicks)}</p>
-                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                    <span>PC: {formatNumber(stats.monthlyAvePcClkCnt)}</span>
-                    <span>모바일: {formatNumber(stats.monthlyAveMobileClkCnt)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-md">
-                  <BarChart3 className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">클릭률 (CTR)</p>
-                  <div className="flex gap-4 mt-1">
-                    <div>
-                      <p className="text-lg font-semibold">{formatPercentage(stats.monthlyAvePcCtr)}</p>
-                      <p className="text-xs text-muted-foreground">PC</p>
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">월간 총 검색량</p>
+                    <p className="text-2xl font-bold">{formatNumber(parseSearchVolume(statsData.stats.monthlyPcQcCnt) + parseSearchVolume(statsData.stats.monthlyMobileQcCnt))}</p>
+                    <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                      <span>PC: {typeof statsData.stats.monthlyPcQcCnt === 'string' ? statsData.stats.monthlyPcQcCnt : formatNumber(statsData.stats.monthlyPcQcCnt)}</span>
+                      <span>모바일: {typeof statsData.stats.monthlyMobileQcCnt === 'string' ? statsData.stats.monthlyMobileQcCnt : formatNumber(statsData.stats.monthlyMobileQcCnt)}</span>
                     </div>
-                    <div>
-                      <p className="text-lg font-semibold">{formatPercentage(stats.monthlyAveMobileCtr)}</p>
-                      <p className="text-xs text-muted-foreground">모바일</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md">
+                    <MousePointer className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">월간 평균 클릭수</p>
+                    <p className="text-2xl font-bold">{formatNumber(statsData.stats.monthlyAvePcClkCnt + statsData.stats.monthlyAveMobileClkCnt)}</p>
+                    <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                      <span>PC: {formatNumber(statsData.stats.monthlyAvePcClkCnt)}</span>
+                      <span>모바일: {formatNumber(statsData.stats.monthlyAveMobileClkCnt)}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-primary/10 rounded-md">
-                  <Users className="w-5 h-5 text-primary" />
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">클릭률 (CTR)</p>
+                    <div className="flex gap-4 mt-1">
+                      <div>
+                        <p className="text-lg font-semibold">{formatPercentage(statsData.stats.monthlyAvePcCtr)}</p>
+                        <p className="text-xs text-muted-foreground">PC</p>
+                      </div>
+                      <div>
+                        <p className="text-lg font-semibold">{formatPercentage(statsData.stats.monthlyAveMobileCtr)}</p>
+                        <p className="text-xs text-muted-foreground">모바일</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">경쟁 강도</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant={competition.variant}>{competition.label}</Badge>
-                    <span className="text-sm text-muted-foreground">({stats.compIdx})</span>
+
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground">경쟁 강도</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant={getCompetitionLevel(statsData.stats.compIdx).variant}>{getCompetitionLevel(statsData.stats.compIdx).label}</Badge>
+                      <span className="text-sm text-muted-foreground">({statsData.stats.compIdx})</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-4 pt-4 border-t">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">모바일 비율</p>
-                <p className="font-medium">{formatPercentage(mobileRatio)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">평균 노출 순위</p>
-                <p className="font-medium">{stats.plAvgDepth.toFixed(1)}위</p>
+            <div className="mt-4 pt-4 border-t">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">모바일 비율</p>
+                  <p className="font-medium">{formatPercentage((parseSearchVolume(statsData.stats.monthlyMobileQcCnt) / (parseSearchVolume(statsData.stats.monthlyPcQcCnt) + parseSearchVolume(statsData.stats.monthlyMobileQcCnt)) || 0))}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">평균 노출 순위</p>
+                  <p className="font-medium">{statsData.stats.plAvgDepth.toFixed(1)}위</p>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        ) : (
+          <Card className="p-4">
+            <div className="text-center py-4 text-muted-foreground">
+              <p className="font-semibold mb-1">키워드: {keyword}</p>
+              <p className="text-sm">키워드 통계 데이터가 없습니다</p>
+            </div>
+          </Card>
+        )}
 
-        {statsData.relatedKeywords.length > 0 && (
+        {statsData?.relatedKeywords && statsData.relatedKeywords.length > 0 && (
           <Card className="p-4">
             <h3 className="font-semibold mb-3">연관 키워드</h3>
             <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -292,7 +285,7 @@ export default function KeywordStatsTab({ keywordId, keyword }: KeywordStatsTabP
                 const comp = getCompetitionLevel(rk.compIdx);
                 
                 return (
-                  <div key={idx} className="p-3 border rounded-md hover-elevate">
+                  <div key={idx} className="p-3 border rounded-md hover-elevate" data-testid={`related-keyword-${idx}`}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">{rk.relKeyword}</span>
                       <Badge variant={comp.variant} className="text-xs">
