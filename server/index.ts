@@ -73,27 +73,34 @@ app.use((req, res, next) => {
   next();
 });
 
-// Auto-create admin account on startup if it doesn't exist
-async function ensureAdminAccount() {
-  try {
-    const existingAdmin = await storage.getUserByUsername('lee.kkhwan@gmail.com');
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash('rnrghks12', 10);
-      await storage.createUser({
-        username: 'lee.kkhwan@gmail.com',
-        password: hashedPassword,
-        role: 'admin',
-      });
-      log('✅ Admin account created: lee.kkhwan@gmail.com');
+// Auto-create admin accounts on startup if they don't exist
+async function ensureAdminAccounts() {
+  const adminAccounts = [
+    { username: 'lee.kkhwan@gmail.com', password: 'rnrghks12' },
+    { username: 'keywordsolution', password: 'keywordsolution0124' },
+  ];
+
+  for (const account of adminAccounts) {
+    try {
+      const existingAdmin = await storage.getUserByUsername(account.username);
+      if (!existingAdmin) {
+        const hashedPassword = await bcrypt.hash(account.password, 10);
+        await storage.createUser({
+          username: account.username,
+          password: hashedPassword,
+          role: 'admin',
+        });
+        log(`✅ Admin account created: ${account.username}`);
+      }
+    } catch (error) {
+      log(`Failed to create admin account ${account.username}: ` + error);
     }
-  } catch (error) {
-    log('Failed to create admin account: ' + error);
   }
 }
 
 (async () => {
-  // Ensure admin account exists before starting server
-  await ensureAdminAccount();
+  // Ensure admin accounts exist before starting server
+  await ensureAdminAccounts();
   
   const server = await registerRoutes(app);
 
