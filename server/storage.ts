@@ -28,13 +28,12 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getUsersWithStats(): Promise<UserStats[]>;
   
-  getKeywords(): Promise<Keyword[]>;
   getKeywordsByUser(userId: string): Promise<Keyword[]>;
-  getKeyword(id: number): Promise<Keyword | undefined>;
-  createKeyword(keyword: InsertKeyword): Promise<Keyword>;
-  updateKeyword(id: number, data: Partial<InsertKeyword>): Promise<Keyword | undefined>;
-  updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null): Promise<void>;
-  deleteKeyword(id: number): Promise<boolean>;
+  getKeyword(id: number, userId: string): Promise<Keyword | undefined>;
+  createKeyword(keyword: InsertKeyword, userId: string): Promise<Keyword>;
+  updateKeyword(id: number, data: Partial<InsertKeyword>, userId: string): Promise<Keyword | undefined>;
+  updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null, userId: string): Promise<void>;
+  deleteKeyword(id: number, userId: string): Promise<boolean>;
   
   getMeasurements(keywordId: number, limit?: number): Promise<Measurement[]>;
   getMeasurementsByUser(userId: string, limit?: number): Promise<Measurement[]>;
@@ -48,7 +47,7 @@ export interface IStorage {
   updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined>;
   deleteGroup(id: number): Promise<boolean>;
   
-  getKeywordsByGroup(groupId: number): Promise<Keyword[]>;
+  getKeywordsByGroup(groupId: number, userId: string): Promise<Keyword[]>;
   addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup>;
   removeKeywordFromGroup(keywordId: number, groupId: number): Promise<boolean>;
   getGroupsForKeyword(keywordId: number): Promise<Group[]>;
@@ -147,28 +146,24 @@ export class MemStorage implements IStorage {
     });
   }
 
-  async getKeywords(): Promise<Keyword[]> {
-    return Array.from(this.keywords.values()).sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }
-
   async getKeywordsByUser(userId: string): Promise<Keyword[]> {
     return Array.from(this.keywords.values())
       .filter(k => k.userId === userId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  async getKeyword(id: number): Promise<Keyword | undefined> {
-    return this.keywords.get(id);
+  async getKeyword(id: number, userId: string): Promise<Keyword | undefined> {
+    const keyword = this.keywords.get(id);
+    if (!keyword || keyword.userId !== userId) return undefined;
+    return keyword;
   }
 
-  async createKeyword(insertKeyword: InsertKeyword): Promise<Keyword> {
+  async createKeyword(insertKeyword: InsertKeyword, userId: string): Promise<Keyword> {
     const id = this.nextKeywordId++;
     const now = new Date();
     const keyword: Keyword = {
       id,
-      userId: insertKeyword.userId ?? null,
+      userId,
       keyword: insertKeyword.keyword,
       targetUrl: insertKeyword.targetUrl,
       isActive: insertKeyword.isActive ?? true,
@@ -182,22 +177,23 @@ export class MemStorage implements IStorage {
     return keyword;
   }
 
-  async updateKeyword(id: number, data: Partial<InsertKeyword>): Promise<Keyword | undefined> {
+  async updateKeyword(id: number, data: Partial<InsertKeyword>, userId: string): Promise<Keyword | undefined> {
     const keyword = this.keywords.get(id);
-    if (!keyword) return undefined;
+    if (!keyword || keyword.userId !== userId) return undefined;
     
     const updated: Keyword = {
       ...keyword,
       ...data,
+      userId: keyword.userId,
       updatedAt: new Date(),
     };
     this.keywords.set(id, updated);
     return updated;
   }
 
-  async updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null): Promise<void> {
+  async updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null, userId: string): Promise<void> {
     const keyword = this.keywords.get(id);
-    if (!keyword) return;
+    if (!keyword || keyword.userId !== userId) return;
     
     const updated: Keyword = {
       ...keyword,
@@ -208,7 +204,10 @@ export class MemStorage implements IStorage {
     this.keywords.set(id, updated);
   }
 
-  async deleteKeyword(id: number): Promise<boolean> {
+  async deleteKeyword(id: number, userId: string): Promise<boolean> {
+    const keyword = this.keywords.get(id);
+    if (!keyword || keyword.userId !== userId) return false;
+    
     const deleted = this.keywords.delete(id);
     if (deleted) {
       Array.from(this.measurements.values())
@@ -341,13 +340,16 @@ export class MemStorage implements IStorage {
     return deleted;
   }
 
-  async getKeywordsByGroup(groupId: number): Promise<Keyword[]> {
+  async getKeywordsByGroup(groupId: number, userId: string): Promise<Keyword[]> {
+    const group = this.groups.get(groupId);
+    if (!group || group.userId !== userId) return [];
+    
     const keywordIds = Array.from(this.keywordGroupRelations.values())
       .filter(rel => rel.groupId === groupId)
       .map(rel => rel.keywordId);
     
     return Array.from(this.keywords.values())
-      .filter(k => keywordIds.includes(k.id));
+      .filter(k => keywordIds.includes(k.id) && k.userId === userId);
   }
 
   async addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup> {
@@ -559,44 +561,46 @@ class PostgresStorage implements IStorage {
     return stats;
   }
 
-  async getKeywords(): Promise<Keyword[]> {
-    return await this.db.select().from(keywords).orderBy(desc(keywords.createdAt));
-  }
-
   async getKeywordsByUser(userId: string): Promise<Keyword[]> {
     return await this.db.select().from(keywords).where(eq(keywords.userId, userId)).orderBy(desc(keywords.createdAt));
   }
 
-  async getKeyword(id: number): Promise<Keyword | undefined> {
-    const result = await this.db.select().from(keywords).where(eq(keywords.id, id)).limit(1);
+  async getKeyword(id: number, userId: string): Promise<Keyword | undefined> {
+    const result = await this.db.select().from(keywords)
+      .where(and(eq(keywords.id, id), eq(keywords.userId, userId)))
+      .limit(1);
     return result[0];
   }
 
-  async createKeyword(insertKeyword: InsertKeyword): Promise<Keyword> {
-    const result = await this.db.insert(keywords).values(insertKeyword).returning();
-    return result[0];
-  }
-
-  async updateKeyword(id: number, data: Partial<InsertKeyword>): Promise<Keyword | undefined> {
-    const result = await this.db.update(keywords)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(keywords.id, id))
+  async createKeyword(insertKeyword: InsertKeyword, userId: string): Promise<Keyword> {
+    const result = await this.db.insert(keywords)
+      .values({ ...insertKeyword, userId })
       .returning();
     return result[0];
   }
 
-  async updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null): Promise<void> {
+  async updateKeyword(id: number, data: Partial<InsertKeyword>, userId: string): Promise<Keyword | undefined> {
+    const result = await this.db.update(keywords)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(keywords.id, id), eq(keywords.userId, userId)))
+      .returning();
+    return result[0];
+  }
+
+  async updateKeywordCompetition(id: number, documentCount: number, competitionRate: string | null, userId: string): Promise<void> {
     await this.db.update(keywords)
       .set({ 
         documentCount, 
         competitionRate,
         updatedAt: new Date() 
       })
-      .where(eq(keywords.id, id));
+      .where(and(eq(keywords.id, id), eq(keywords.userId, userId)));
   }
 
-  async deleteKeyword(id: number): Promise<boolean> {
-    const result = await this.db.delete(keywords).where(eq(keywords.id, id)).returning();
+  async deleteKeyword(id: number, userId: string): Promise<boolean> {
+    const result = await this.db.delete(keywords)
+      .where(and(eq(keywords.id, id), eq(keywords.userId, userId)))
+      .returning();
     return result.length > 0;
   }
 
@@ -691,7 +695,10 @@ class PostgresStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getKeywordsByGroup(groupId: number): Promise<Keyword[]> {
+  async getKeywordsByGroup(groupId: number, userId: string): Promise<Keyword[]> {
+    const group = await this.getGroup(groupId);
+    if (!group || group.userId !== userId) return [];
+    
     const relations = await this.db.select()
       .from(keywordGroups)
       .where(eq(keywordGroups.groupId, groupId));
@@ -700,7 +707,7 @@ class PostgresStorage implements IStorage {
     
     const keywordIds = relations.map(r => r.keywordId);
     return await this.db.select().from(keywords)
-      .where(inArray(keywords.id, keywordIds));
+      .where(and(inArray(keywords.id, keywordIds), eq(keywords.userId, userId)));
   }
 
   async addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup> {

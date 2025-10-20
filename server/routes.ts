@@ -233,10 +233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/keywords', requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
-      // Admin can see all keywords, regular users only see their own
-      const keywords = user.role === 'admin' 
-        ? await storage.getKeywords()
-        : await storage.getKeywordsByUser(user.id);
+      // All users (including admin) see only their own keywords
+      const keywords = await storage.getKeywordsByUser(user.id);
       const latestMeasurements = await storage.getLatestMeasurements();
       const previousMeasurements = await storage.getPreviousMeasurements();
 
@@ -307,10 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Automatically assign userId
-      const keyword = await storage.createKeyword({
-        ...result.data,
-        userId: user.id,
-      });
+      const keyword = await storage.createKeyword(result.data, user.id);
       res.status(201).json(keyword);
     } catch (error) {
       console.error('키워드 생성 오류:', error);
@@ -323,18 +318,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const id = parseInt(req.params.id);
       
-      // Check ownership
-      const keyword = await storage.getKeyword(id);
-      if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+      // Try to delete (ownership is checked in storage layer)
+      const deleted = await storage.deleteKeyword(id, user.id);
+      if (!deleted) {
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
-
-      // Admin can delete any keyword, users can only delete their own
-      if (user.role !== 'admin' && keyword.userId !== user.id) {
-        return res.status(403).json({ error: '권한이 없습니다' });
-      }
-
-      const deleted = await storage.deleteKeyword(id);
+      
       res.json({ success: deleted });
     } catch (error) {
       console.error('키워드 삭제 오류:', error);
@@ -347,15 +336,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const keywordId = parseInt(req.params.id);
       const method = (req.query.method as string) || 'html-parser';
-      const keyword = await storage.getKeyword(keywordId);
+      const keyword = await storage.getKeyword(keywordId, user.id);
 
       if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
-      }
-
-      // Check ownership
-      if (user.role !== 'admin' && keyword.userId !== user.id) {
-        return res.status(403).json({ error: '권한이 없습니다' });
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
 
       const startTime = Date.now();
@@ -626,13 +610,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 30;
       
       // Check ownership
-      const keyword = await storage.getKeyword(keywordId);
+      const keyword = await storage.getKeyword(keywordId, user.id);
       if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
-      }
-      
-      if (user.role !== 'admin' && keyword.userId !== user.id) {
-        return res.status(403).json({ error: '권한이 없습니다' });
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
       
       const measurements = await storage.getMeasurements(keywordId, limit);
@@ -737,13 +717,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/keywords/:id/stats', async (req, res) => {
+  app.get('/api/keywords/:id/stats', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const keywordId = parseInt(req.params.id);
-      const keyword = await storage.getKeyword(keywordId);
+      const keyword = await storage.getKeyword(keywordId, user.id);
 
       if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
 
       console.log('[키워드 통계] 요청:', keyword.keyword);
@@ -773,13 +754,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/keywords/:id/blogs', async (req, res) => {
+  app.get('/api/keywords/:id/blogs', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const keywordId = parseInt(req.params.id);
-      const keyword = await storage.getKeyword(keywordId);
+      const keyword = await storage.getKeyword(keywordId, user.id);
 
       if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
 
       const display = req.query.display ? parseInt(req.query.display as string) : 10;
@@ -817,12 +799,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get('/api/keywords/:id/related-keywords', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const keywordId = parseInt(req.params.id);
-      const keyword = await storage.getKeyword(keywordId);
+      const keyword = await storage.getKeyword(keywordId, user.id);
       const force = req.query.force === 'true';
 
       if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
 
       console.log(`\n[추천키워드 통합] 키워드: "${keyword.keyword}" (force: ${force})`);
@@ -915,11 +898,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get('/api/keywords/:id/unified-search', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const keywordId = parseInt(req.params.id);
-      const keyword = await storage.getKeyword(keywordId);
+      const keyword = await storage.getKeyword(keywordId, user.id);
 
       if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
 
       console.log(`[통합검색] 키워드: "${keyword.keyword}", 타겟 URL: "${keyword.targetUrl}"`);
@@ -959,15 +943,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user as any;
       const keywordId = parseInt(req.params.id);
-      const keyword = await storage.getKeyword(keywordId);
+      const keyword = await storage.getKeyword(keywordId, user.id);
 
       if (!keyword) {
-        return res.status(404).json({ error: '키워드를 찾을 수 없습니다' });
-      }
-
-      // Check ownership
-      if (user.role !== 'admin' && keyword.userId !== user.id) {
-        return res.status(403).json({ error: '권한이 없습니다' });
+        return res.status(404).json({ error: '키워드를 찾을 수 없거나 권한이 없습니다' });
       }
 
       console.log(`[경쟁률 계산] 시작: ${keyword.keyword}`);
@@ -1002,7 +981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // 3. DB 업데이트
-      await storage.updateKeywordCompetition(keywordId, documentCount, competitionRate ? competitionRate.toString() : null);
+      await storage.updateKeywordCompetition(keywordId, documentCount, competitionRate ? competitionRate.toString() : null, user.id);
       console.log(`[경쟁률 계산] DB 업데이트 완료`);
 
       res.json({
@@ -1085,8 +1064,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 그룹에 속한 키워드 조회
   app.get('/api/groups/:id/keywords', requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const groupId = parseInt(req.params.id);
-      const keywords = await storage.getKeywordsByGroup(groupId);
+      const keywords = await storage.getKeywordsByGroup(groupId, user.id);
       res.json(keywords);
     } catch (error) {
       console.error('그룹 키워드 조회 오류:', error);
@@ -1172,7 +1152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/alerts/count', requireAuth, async (req, res) => {
     try {
       const alerts = await storage.getAllKeywordAlerts();
-      const activeCount = alerts.filter(a => a.isActive).length;
+      const activeCount = alerts.filter(a => a.isEnabled).length;
       res.json({ count: activeCount });
     } catch (error) {
       console.error('알림 개수 조회 오류:', error);
