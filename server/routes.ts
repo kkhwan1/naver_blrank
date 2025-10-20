@@ -61,13 +61,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: '이미 사용 중인 아이디입니다' });
       }
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
-
       // Create user (ALWAYS as regular user, never trust client-provided role)
       const user = await storage.createUser({
         username,
-        password: hashedPassword,
+        password,
         role: 'user', // Force user role, admin must be created manually
       });
 

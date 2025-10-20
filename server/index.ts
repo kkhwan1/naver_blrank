@@ -77,18 +77,17 @@ app.use((req, res, next) => {
 // Auto-create admin accounts on startup if they don't exist
 async function ensureAdminAccounts() {
   const adminAccounts = [
-    { username: 'lee.kkhwan@gmail.com', password: 'rnrghks12' },
-    { username: 'keywordsolution', password: 'keywordsolution0124' },
+    { username: 'lee.kkhwan@gmail.com', password: 'test1234' },
+    { username: 'keywordsolution', password: 'test1234' },
   ];
 
   for (const account of adminAccounts) {
     try {
       const existingAdmin = await storage.getUserByUsername(account.username);
       if (!existingAdmin) {
-        const hashedPassword = await bcrypt.hash(account.password, 10);
         await storage.createUser({
           username: account.username,
-          password: hashedPassword,
+          password: account.password,
           role: 'admin',
         });
         log(`✅ Admin account created: ${account.username}`);

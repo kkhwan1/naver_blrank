@@ -1,6 +1,5 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
 
@@ -14,7 +13,7 @@ passport.use(
         return done(null, false, { message: "아이디 또는 비밀번호가 틀렸습니다." });
       }
 
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      const isValidPassword = password === user.password;
       
       if (!isValidPassword) {
         return done(null, false, { message: "아이디 또는 비밀번호가 틀렸습니다." });
