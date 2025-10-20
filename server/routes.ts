@@ -394,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             searchVolumeAvg: searchVolumeStr,
             durationMs: Date.now() - startTime,
             method: searchMethod,
-          });
+          }, user.id);
 
           return res.json({ ...measurement, method: searchMethod });
         }
@@ -500,7 +500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchVolumeAvg: searchVolumeStr,
           durationMs: Date.now() - startTime,
           method: searchMethod,
-        });
+        }, user.id);
 
         res.json({ 
           ...measurement, 
@@ -528,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errorMessage: error instanceof Error ? error.message : '알 수 없는 오류',
           durationMs: Date.now() - startTime,
           method: method,
-        });
+        }, user.id);
 
         res.json({ ...measurement, method: method, error: error instanceof Error ? error.message : '알 수 없는 오류' });
       }
@@ -1062,12 +1062,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 그룹에 키워드 추가 (RESTful 방식)
   app.post('/api/groups/:id/keywords', requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id;
       const groupId = parseInt(req.params.id);
       const { keywordId } = req.body;
       if (!keywordId) {
         return res.status(400).json({ error: 'keywordId가 필요합니다' });
       }
-      const relation = await storage.addKeywordToGroup(keywordId, groupId);
+      const relation = await storage.addKeywordToGroup(keywordId, groupId, userId);
       res.status(201).json(relation);
     } catch (error) {
       console.error('그룹에 키워드 추가 오류:', error);
@@ -1078,9 +1079,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 그룹에서 키워드 제거 (RESTful 방식)
   app.delete('/api/groups/:groupId/keywords/:keywordId', requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id;
       const groupId = parseInt(req.params.groupId);
       const keywordId = parseInt(req.params.keywordId);
-      const removed = await storage.removeKeywordFromGroup(keywordId, groupId);
+      const removed = await storage.removeKeywordFromGroup(keywordId, groupId, userId);
       if (!removed) {
         return res.status(404).json({ error: '해당 키워드-그룹 연결을 찾을 수 없습니다' });
       }
@@ -1094,9 +1096,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 키워드를 그룹에 추가
   app.post('/api/keywords/:keywordId/groups/:groupId', requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id;
       const keywordId = parseInt(req.params.keywordId);
       const groupId = parseInt(req.params.groupId);
-      const relation = await storage.addKeywordToGroup(keywordId, groupId);
+      const relation = await storage.addKeywordToGroup(keywordId, groupId, userId);
       res.status(201).json(relation);
     } catch (error) {
       console.error('키워드-그룹 연결 오류:', error);
@@ -1107,9 +1110,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 그룹에서 키워드 제거
   app.delete('/api/keywords/:keywordId/groups/:groupId', requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id;
       const keywordId = parseInt(req.params.keywordId);
       const groupId = parseInt(req.params.groupId);
-      const removed = await storage.removeKeywordFromGroup(keywordId, groupId);
+      const removed = await storage.removeKeywordFromGroup(keywordId, groupId, userId);
       if (!removed) {
         return res.status(404).json({ error: '해당 키워드-그룹 연결을 찾을 수 없습니다' });
       }
@@ -1123,8 +1127,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 키워드가 속한 그룹 목록 조회
   app.get('/api/keywords/:id/groups', requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id;
       const keywordId = parseInt(req.params.id);
-      const groups = await storage.getGroupsForKeyword(keywordId);
+      const groups = await storage.getGroupsForKeyword(keywordId, userId);
       res.json(groups);
     } catch (error) {
       console.error('키워드 그룹 조회 오류:', error);

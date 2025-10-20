@@ -37,7 +37,7 @@ export interface IStorage {
   
   getMeasurements(keywordId: number, limit?: number): Promise<Measurement[]>;
   getMeasurementsByUser(userId: string, limit?: number): Promise<Measurement[]>;
-  createMeasurement(measurement: InsertMeasurement): Promise<Measurement>;
+  createMeasurement(measurement: InsertMeasurement, userId: string): Promise<Measurement>;
   getLatestMeasurements(): Promise<Map<number, Measurement>>;
   getPreviousMeasurements(): Promise<Map<number, Measurement>>;
   
@@ -48,9 +48,9 @@ export interface IStorage {
   deleteGroup(id: number, userId: string): Promise<boolean>;
   
   getKeywordsByGroup(groupId: number, userId: string): Promise<Keyword[]>;
-  addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup>;
-  removeKeywordFromGroup(keywordId: number, groupId: number): Promise<boolean>;
-  getGroupsForKeyword(keywordId: number): Promise<Group[]>;
+  addKeywordToGroup(keywordId: number, groupId: number, userId: string): Promise<KeywordGroup>;
+  removeKeywordFromGroup(keywordId: number, groupId: number, userId: string): Promise<boolean>;
+  getGroupsForKeyword(keywordId: number, userId: string): Promise<Group[]>;
   
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
   updateUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings>;
@@ -233,7 +233,12 @@ export class MemStorage implements IStorage {
       .slice(0, limit);
   }
 
-  async createMeasurement(insertMeasurement: InsertMeasurement): Promise<Measurement> {
+  async createMeasurement(insertMeasurement: InsertMeasurement, userId: string): Promise<Measurement> {
+    const keyword = await this.getKeyword(Number(insertMeasurement.keywordId), userId);
+    if (!keyword) {
+      throw new Error('Keyword not found or access denied');
+    }
+    
     const id = this.nextMeasurementId++;
     const measurement: Measurement = {
       id,
@@ -357,7 +362,13 @@ export class MemStorage implements IStorage {
       .filter(k => keywordIds.includes(k.id) && k.userId === userId);
   }
 
-  async addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup> {
+  async addKeywordToGroup(keywordId: number, groupId: number, userId: string): Promise<KeywordGroup> {
+    const keyword = await this.getKeyword(keywordId, userId);
+    const group = await this.getGroup(groupId, userId);
+    if (!keyword || !group) {
+      throw new Error('Keyword or group not found or access denied');
+    }
+    
     const key = `${keywordId}-${groupId}`;
     const relation: KeywordGroup = {
       keywordId,
@@ -368,18 +379,27 @@ export class MemStorage implements IStorage {
     return relation;
   }
 
-  async removeKeywordFromGroup(keywordId: number, groupId: number): Promise<boolean> {
+  async removeKeywordFromGroup(keywordId: number, groupId: number, userId: string): Promise<boolean> {
+    const keyword = await this.getKeyword(keywordId, userId);
+    const group = await this.getGroup(groupId, userId);
+    if (!keyword || !group) {
+      return false;
+    }
+    
     const key = `${keywordId}-${groupId}`;
     return this.keywordGroupRelations.delete(key);
   }
 
-  async getGroupsForKeyword(keywordId: number): Promise<Group[]> {
+  async getGroupsForKeyword(keywordId: number, userId: string): Promise<Group[]> {
+    const keyword = await this.getKeyword(keywordId, userId);
+    if (!keyword) return [];
+    
     const groupIds = Array.from(this.keywordGroupRelations.values())
       .filter(rel => rel.keywordId === keywordId)
       .map(rel => rel.groupId);
     
     return Array.from(this.groups.values())
-      .filter(g => groupIds.includes(g.id));
+      .filter(g => groupIds.includes(g.id) && g.userId === userId);
   }
 
   async getUserSettings(userId: string): Promise<UserSettings | undefined> {
@@ -632,7 +652,12 @@ class PostgresStorage implements IStorage {
       .limit(limit);
   }
 
-  async createMeasurement(insertMeasurement: InsertMeasurement): Promise<Measurement> {
+  async createMeasurement(insertMeasurement: InsertMeasurement, userId: string): Promise<Measurement> {
+    const keyword = await this.getKeyword(Number(insertMeasurement.keywordId), userId);
+    if (!keyword) {
+      throw new Error('Keyword not found or access denied');
+    }
+    
     const result = await this.db.insert(measurements).values(insertMeasurement).returning();
     return result[0];
   }
@@ -719,14 +744,26 @@ class PostgresStorage implements IStorage {
       .where(and(inArray(keywords.id, keywordIds), eq(keywords.userId, userId)));
   }
 
-  async addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup> {
+  async addKeywordToGroup(keywordId: number, groupId: number, userId: string): Promise<KeywordGroup> {
+    const keyword = await this.getKeyword(keywordId, userId);
+    const group = await this.getGroup(groupId, userId);
+    if (!keyword || !group) {
+      throw new Error('Keyword or group not found or access denied');
+    }
+    
     const result = await this.db.insert(keywordGroups)
       .values({ keywordId, groupId })
       .returning();
     return result[0];
   }
 
-  async removeKeywordFromGroup(keywordId: number, groupId: number): Promise<boolean> {
+  async removeKeywordFromGroup(keywordId: number, groupId: number, userId: string): Promise<boolean> {
+    const keyword = await this.getKeyword(keywordId, userId);
+    const group = await this.getGroup(groupId, userId);
+    if (!keyword || !group) {
+      return false;
+    }
+    
     const result = await this.db.delete(keywordGroups)
       .where(and(
         eq(keywordGroups.keywordId, keywordId),
@@ -736,7 +773,10 @@ class PostgresStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getGroupsForKeyword(keywordId: number): Promise<Group[]> {
+  async getGroupsForKeyword(keywordId: number, userId: string): Promise<Group[]> {
+    const keyword = await this.getKeyword(keywordId, userId);
+    if (!keyword) return [];
+    
     const relations = await this.db.select()
       .from(keywordGroups)
       .where(eq(keywordGroups.keywordId, keywordId));
@@ -745,7 +785,7 @@ class PostgresStorage implements IStorage {
     
     const groupIds = relations.map(r => r.groupId);
     return await this.db.select().from(groups)
-      .where(inArray(groups.id, groupIds));
+      .where(and(inArray(groups.id, groupIds), eq(groups.userId, userId)));
   }
 
   async getUserSettings(userId: string): Promise<UserSettings | undefined> {

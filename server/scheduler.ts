@@ -121,7 +121,7 @@ export class MeasurementScheduler {
               searchVolumeAvg: searchVolumeStr,
               durationMs: Date.now() - startTime,
               method: 'html-parser',
-            });
+            }, keyword.userId);
             console.log(`No Smart Block found for keyword #${keyword.id}`);
             continue;
           }
@@ -223,7 +223,7 @@ export class MeasurementScheduler {
             searchVolumeAvg: searchVolumeStr,
             durationMs: Date.now() - startTime,
             method: 'html-parser',
-          });
+          }, keyword.userId);
 
           console.log(`Measurement completed for keyword #${keyword.id}: rank=${rankResult.rank}, status=${smartblockStatus}, visible=${isVisibleInSearch}`);
         } catch (error) {
@@ -242,7 +242,7 @@ export class MeasurementScheduler {
             durationMs: 0,
             errorMessage: error instanceof Error ? error.message : 'Unknown error',
             method: 'html-parser',
-          });
+          }, keyword.userId);
         }
       }
 
