@@ -38,8 +38,8 @@ export interface IStorage {
   getMeasurements(keywordId: number, limit?: number): Promise<Measurement[]>;
   getMeasurementsByUser(userId: string, limit?: number): Promise<Measurement[]>;
   createMeasurement(measurement: InsertMeasurement, userId: string): Promise<Measurement>;
-  getLatestMeasurements(): Promise<Map<number, Measurement>>;
-  getPreviousMeasurements(): Promise<Map<number, Measurement>>;
+  getLatestMeasurements(userId: string): Promise<Map<number, Measurement>>;
+  getPreviousMeasurements(userId: string): Promise<Map<number, Measurement>>;
   
   getGroups(userId: string): Promise<Group[]>;
   getGroup(id: number, userId: string): Promise<Group | undefined>;
@@ -265,37 +265,6 @@ export class MemStorage implements IStorage {
     return measurement;
   }
 
-  async getLatestMeasurements(): Promise<Map<number, Measurement>> {
-    const latest = new Map<number, Measurement>();
-    
-    Array.from(this.measurements.values())
-      .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
-      .forEach(measurement => {
-        if (!latest.has(measurement.keywordId)) {
-          latest.set(measurement.keywordId, measurement);
-        }
-      });
-    
-    return latest;
-  }
-
-  async getPreviousMeasurements(): Promise<Map<number, Measurement>> {
-    const previous = new Map<number, Measurement>();
-    const latest = new Map<number, Measurement>();
-    
-    Array.from(this.measurements.values())
-      .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())
-      .forEach(measurement => {
-        if (!latest.has(measurement.keywordId)) {
-          latest.set(measurement.keywordId, measurement);
-        } else if (!previous.has(measurement.keywordId)) {
-          previous.set(measurement.keywordId, measurement);
-        }
-      });
-    
-    return previous;
-  }
-
   async getGroups(userId: string): Promise<Group[]> {
     return Array.from(this.groups.values())
       .filter(g => g.userId === userId)
@@ -480,6 +449,46 @@ export class MemStorage implements IStorage {
 
   async deleteKeywordAlert(id: number): Promise<boolean> {
     return this.alerts.delete(id);
+  }
+
+  async getLatestMeasurements(userId: string): Promise<Map<number, Measurement>> {
+    const userKeywords = Array.from(this.keywords.values()).filter(k => k.userId === userId);
+    const keywordIds = new Set(userKeywords.map(k => k.id));
+    
+    const allMeasurements = Array.from(this.measurements.values())
+      .filter(m => keywordIds.has(m.keywordId))
+      .sort((a, b) => b.measuredAt.getTime() - a.measuredAt.getTime());
+    
+    const latest = new Map<number, Measurement>();
+    allMeasurements.forEach(measurement => {
+      if (!latest.has(measurement.keywordId)) {
+        latest.set(measurement.keywordId, measurement);
+      }
+    });
+    
+    return latest;
+  }
+
+  async getPreviousMeasurements(userId: string): Promise<Map<number, Measurement>> {
+    const userKeywords = Array.from(this.keywords.values()).filter(k => k.userId === userId);
+    const keywordIds = new Set(userKeywords.map(k => k.id));
+    
+    const allMeasurements = Array.from(this.measurements.values())
+      .filter(m => keywordIds.has(m.keywordId))
+      .sort((a, b) => b.measuredAt.getTime() - a.measuredAt.getTime());
+    
+    const previous = new Map<number, Measurement>();
+    const latest = new Map<number, Measurement>();
+    
+    allMeasurements.forEach(measurement => {
+      if (!latest.has(measurement.keywordId)) {
+        latest.set(measurement.keywordId, measurement);
+      } else if (!previous.has(measurement.keywordId)) {
+        previous.set(measurement.keywordId, measurement);
+      }
+    });
+    
+    return previous;
   }
 
   async getAggregatedRankTrend(userId: string, days: number): Promise<Array<{date: string, avgRank: number, count: number}>> {
@@ -676,9 +685,19 @@ class PostgresStorage implements IStorage {
     return result[0];
   }
 
-  async getLatestMeasurements(): Promise<Map<number, Measurement>> {
+  async getLatestMeasurements(userId: string): Promise<Map<number, Measurement>> {
+    const userKeywords = await this.db.select()
+      .from(keywords)
+      .where(eq(keywords.userId, userId));
+    const keywordIds = userKeywords.map(k => k.id);
+    
+    if (keywordIds.length === 0) {
+      return new Map();
+    }
+    
     const allMeasurements = await this.db.select()
       .from(measurements)
+      .where(inArray(measurements.keywordId, keywordIds))
       .orderBy(desc(measurements.measuredAt));
     
     const latest = new Map<number, Measurement>();
@@ -691,9 +710,19 @@ class PostgresStorage implements IStorage {
     return latest;
   }
 
-  async getPreviousMeasurements(): Promise<Map<number, Measurement>> {
+  async getPreviousMeasurements(userId: string): Promise<Map<number, Measurement>> {
+    const userKeywords = await this.db.select()
+      .from(keywords)
+      .where(eq(keywords.userId, userId));
+    const keywordIds = userKeywords.map(k => k.id);
+    
+    if (keywordIds.length === 0) {
+      return new Map();
+    }
+    
     const allMeasurements = await this.db.select()
       .from(measurements)
+      .where(inArray(measurements.keywordId, keywordIds))
       .orderBy(desc(measurements.measuredAt));
     
     const previous = new Map<number, Measurement>();

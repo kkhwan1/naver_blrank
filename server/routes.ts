@@ -218,8 +218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       // All users (including admin) see only their own keywords
       const keywords = await storage.getKeywordsByUser(user.id);
-      const latestMeasurements = await storage.getLatestMeasurements();
-      const previousMeasurements = await storage.getPreviousMeasurements();
+      const latestMeasurements = await storage.getLatestMeasurements(user.id);
+      const previousMeasurements = await storage.getPreviousMeasurements(user.id);
 
       const keywordsWithRank = keywords.map(keyword => {
         const measurement = latestMeasurements.get(keyword.id);
