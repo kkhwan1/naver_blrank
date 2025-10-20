@@ -20,28 +20,11 @@ const naverSearchAdClient = new NaverSearchAdClient();
 const naverSearchClient = new NaverSearchClient();
 
 // Authentication middleware
-// TEMPORARY: Auto-login as admin@gmail.com for testing
-async function requireAuth(req: Request, res: Response, next: NextFunction) {
+function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated()) {
     return next();
   }
-  
-  // Auto-login as admin@gmail.com
-  try {
-    const adminUser = await storage.getUserByUsername('admin@gmail.com');
-    if (adminUser) {
-      req.login(adminUser, (err) => {
-        if (err) {
-          return res.status(401).json({ error: "로그인이 필요합니다" });
-        }
-        return next();
-      });
-    } else {
-      res.status(401).json({ error: "로그인이 필요합니다" });
-    }
-  } catch (error) {
-    res.status(401).json({ error: "로그인이 필요합니다" });
-  }
+  res.status(401).json({ error: "로그인이 필요합니다" });
 }
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
@@ -1023,7 +1006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req.user as any).id;
       const validated = insertGroupSchema.parse({ ...req.body, userId });
-      const group = await storage.createGroup(validated);
+      const group = await storage.createGroup(validated, userId);
       res.status(201).json(group);
     } catch (error) {
       console.error('그룹 생성 오류:', error);
@@ -1034,8 +1017,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 그룹 수정
   app.put('/api/groups/:id', requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id;
       const groupId = parseInt(req.params.id);
-      const updated = await storage.updateGroup(groupId, req.body);
+      const updated = await storage.updateGroup(groupId, req.body, userId);
       if (!updated) {
         return res.status(404).json({ error: '그룹을 찾을 수 없습니다' });
       }
@@ -1049,8 +1033,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 그룹 삭제
   app.delete('/api/groups/:id', requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id;
       const groupId = parseInt(req.params.id);
-      const deleted = await storage.deleteGroup(groupId);
+      const deleted = await storage.deleteGroup(groupId, userId);
       if (!deleted) {
         return res.status(404).json({ error: '그룹을 찾을 수 없습니다' });
       }

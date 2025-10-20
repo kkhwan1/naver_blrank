@@ -42,10 +42,10 @@ export interface IStorage {
   getPreviousMeasurements(): Promise<Map<number, Measurement>>;
   
   getGroups(userId: string): Promise<Group[]>;
-  getGroup(id: number): Promise<Group | undefined>;
-  createGroup(group: InsertGroup): Promise<Group>;
-  updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined>;
-  deleteGroup(id: number): Promise<boolean>;
+  getGroup(id: number, userId: string): Promise<Group | undefined>;
+  createGroup(group: InsertGroup, userId: string): Promise<Group>;
+  updateGroup(id: number, data: Partial<InsertGroup>, userId: string): Promise<Group | undefined>;
+  deleteGroup(id: number, userId: string): Promise<boolean>;
   
   getKeywordsByGroup(groupId: number, userId: string): Promise<Keyword[]>;
   addKeywordToGroup(keywordId: number, groupId: number): Promise<KeywordGroup>;
@@ -297,16 +297,18 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  async getGroup(id: number): Promise<Group | undefined> {
-    return this.groups.get(id);
+  async getGroup(id: number, userId: string): Promise<Group | undefined> {
+    const group = this.groups.get(id);
+    if (!group || group.userId !== userId) return undefined;
+    return group;
   }
 
-  async createGroup(insertGroup: InsertGroup): Promise<Group> {
+  async createGroup(insertGroup: InsertGroup, userId: string): Promise<Group> {
     const id = this.nextGroupId++;
     const now = new Date();
     const group: Group = {
       id,
-      userId: insertGroup.userId,
+      userId,
       name: insertGroup.name,
       description: insertGroup.description ?? null,
       color: insertGroup.color ?? "#3b82f6",
@@ -317,9 +319,9 @@ export class MemStorage implements IStorage {
     return group;
   }
 
-  async updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined> {
+  async updateGroup(id: number, data: Partial<InsertGroup>, userId: string): Promise<Group | undefined> {
     const group = this.groups.get(id);
-    if (!group) return undefined;
+    if (!group || group.userId !== userId) return undefined;
     
     const updated: Group = {
       ...group,
@@ -330,7 +332,10 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
-  async deleteGroup(id: number): Promise<boolean> {
+  async deleteGroup(id: number, userId: string): Promise<boolean> {
+    const group = this.groups.get(id);
+    if (!group || group.userId !== userId) return false;
+    
     const deleted = this.groups.delete(id);
     if (deleted) {
       Array.from(this.keywordGroupRelations.keys())
@@ -672,31 +677,35 @@ class PostgresStorage implements IStorage {
       .orderBy(desc(groups.createdAt));
   }
 
-  async getGroup(id: number): Promise<Group | undefined> {
-    const result = await this.db.select().from(groups).where(eq(groups.id, id)).limit(1);
+  async getGroup(id: number, userId: string): Promise<Group | undefined> {
+    const result = await this.db.select().from(groups)
+      .where(and(eq(groups.id, id), eq(groups.userId, userId)))
+      .limit(1);
     return result[0];
   }
 
-  async createGroup(insertGroup: InsertGroup): Promise<Group> {
-    const result = await this.db.insert(groups).values(insertGroup).returning();
+  async createGroup(insertGroup: InsertGroup, userId: string): Promise<Group> {
+    const result = await this.db.insert(groups).values({ ...insertGroup, userId }).returning();
     return result[0];
   }
 
-  async updateGroup(id: number, data: Partial<InsertGroup>): Promise<Group | undefined> {
+  async updateGroup(id: number, data: Partial<InsertGroup>, userId: string): Promise<Group | undefined> {
     const result = await this.db.update(groups)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(groups.id, id))
+      .where(and(eq(groups.id, id), eq(groups.userId, userId)))
       .returning();
     return result[0];
   }
 
-  async deleteGroup(id: number): Promise<boolean> {
-    const result = await this.db.delete(groups).where(eq(groups.id, id)).returning();
+  async deleteGroup(id: number, userId: string): Promise<boolean> {
+    const result = await this.db.delete(groups)
+      .where(and(eq(groups.id, id), eq(groups.userId, userId)))
+      .returning();
     return result.length > 0;
   }
 
   async getKeywordsByGroup(groupId: number, userId: string): Promise<Keyword[]> {
-    const group = await this.getGroup(groupId);
+    const group = await this.getGroup(groupId, userId);
     if (!group || group.userId !== userId) return [];
     
     const relations = await this.db.select()
