@@ -81,6 +81,9 @@ async function ensureAdminAccounts() {
     { username: 'keywordsolution', password: 'test1234' },
   ];
 
+  // PostgreSQL direct connection for password updates
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+
   for (const account of adminAccounts) {
     try {
       const existingAdmin = await storage.getUserByUsername(account.username);
@@ -91,11 +94,21 @@ async function ensureAdminAccounts() {
           role: 'admin',
         });
         log(`✅ Admin account created: ${account.username}`);
+      } else {
+        // Update existing admin password to plaintext
+        await sql`
+          UPDATE users 
+          SET password = ${account.password}
+          WHERE username = ${account.username}
+        `;
+        log(`✅ Admin password updated: ${account.username}`);
       }
     } catch (error) {
-      log(`Failed to create admin account ${account.username}: ` + error);
+      log(`Failed to update admin account ${account.username}: ` + error);
     }
   }
+
+  await sql.end();
 }
 
 (async () => {
