@@ -26,7 +26,7 @@ export const users = pgTable("users", {
 
 export const keywords = pgTable("keywords", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Nullable for migration
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   keyword: text("keyword").notNull(),
   targetUrl: text("target_url").notNull(),
   isActive: boolean("is_active").notNull().default(true),
@@ -84,6 +84,7 @@ export const userSettings = pgTable("user_settings", {
 
 export const insertKeywordSchema = createInsertSchema(keywords).omit({
   id: true,
+  userId: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
