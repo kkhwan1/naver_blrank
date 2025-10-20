@@ -658,7 +658,12 @@ class PostgresStorage implements IStorage {
       throw new Error('Keyword not found or access denied');
     }
     
-    const result = await this.db.insert(measurements).values(insertMeasurement).returning();
+    // Convert undefined values to null for PostgreSQL compatibility
+    const cleanedData = Object.fromEntries(
+      Object.entries(insertMeasurement).map(([key, value]) => [key, value === undefined ? null : value])
+    ) as InsertMeasurement;
+    
+    const result = await this.db.insert(measurements).values(cleanedData).returning();
     return result[0];
   }
 
