@@ -10,6 +10,19 @@ import { MeasurementScheduler } from "./scheduler";
 import bcrypt from "bcrypt";
 import postgres from "postgres";
 
+// 환경 변수 검증
+if (!process.env.DATABASE_URL) {
+  console.error("❌ DATABASE_URL 환경 변수가 설정되지 않았습니다!");
+  process.exit(1);
+}
+
+if (!process.env.SESSION_SECRET) {
+  console.error("❌ SESSION_SECRET 환경 변수가 설정되지 않았습니다!");
+  process.exit(1);
+}
+
+console.log("✅ 환경 변수 검증 완료");
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
