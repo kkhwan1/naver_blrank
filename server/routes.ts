@@ -13,6 +13,14 @@ import bcrypt from "bcrypt";
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
+// 한국 시간(KST) 기준 현재 시간 생성 함수
+function getKoreanTime(): Date {
+  // UTC 시간에 9시간을 더해서 한국 시간으로 변환
+  const now = new Date();
+  const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  return kstTime;
+}
+
 const naverClient = new NaverAPIClient();
 const smartBlockParser = new SmartBlockParser();
 const htmlParser = new NaverHTMLParser();
@@ -85,25 +93,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/login', (req, res, next) => {
-    passport.authenticate('local', (err: any, user: any, info: any) => {
-      if (err) {
-        return res.status(500).json({ error: '로그인 중 오류가 발생했습니다' });
+  app.post('/api/login', async (req, res, next) => {
+    try {
+      const { username, password } = req.body;
+      
+      // Check if user exists, if not create admin account
+      let user = await storage.getUserByUsername(username);
+      if (!user && (username === 'lee.kkhwan@gmail.com' || username === 'keywordsolution')) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user = await storage.createUser({
+          username,
+          password: hashedPassword,
+          role: 'admin',
+        });
+        console.log(`✅ Admin account created during login: ${username}`);
       }
-      if (!user) {
-        return res.status(401).json({ error: info?.message || '로그인 실패' });
-      }
-      req.login(user, (err) => {
+      
+      // Now proceed with normal authentication
+      passport.authenticate('local', (err: any, user: any, info: any) => {
         if (err) {
+          console.error('Login authentication error:', err);
           return res.status(500).json({ error: '로그인 중 오류가 발생했습니다' });
         }
-        res.json({
-          id: user.id,
-          username: user.username,
-          role: user.role,
+        if (!user) {
+          return res.status(401).json({ error: info?.message || '로그인 실패' });
+        }
+        req.login(user, (err) => {
+          if (err) {
+            return res.status(500).json({ error: '로그인 중 오류가 발생했습니다' });
+          }
+          res.json({
+            id: user.id,
+            username: user.username,
+            role: user.role,
+          });
         });
-      });
-    })(req, res, next);
+      })(req, res, next);
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: '로그인 중 오류가 발생했습니다' });
+    }
   });
 
   // 개발 환경 전용: 테스트용 자동 로그인 엔드포인트
@@ -233,9 +262,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let smartblockCategories = null;
         if (measurement?.smartblockDetails) {
           try {
-            smartblockCategories = JSON.parse(measurement.smartblockDetails);
+            // smartblockDetails가 이미 객체인 경우와 문자열인 경우를 구분
+            if (typeof measurement.smartblockDetails === 'string') {
+              // 문자열이 "[object Object]" 형태인 경우 무시
+              if (measurement.smartblockDetails.startsWith('[object ')) {
+                console.log('Skipping invalid smartblockDetails:', measurement.smartblockDetails);
+                smartblockCategories = null;
+              } else {
+                smartblockCategories = JSON.parse(measurement.smartblockDetails);
+              }
+            } else if (typeof measurement.smartblockDetails === 'object') {
+              // 이미 객체인 경우 그대로 사용
+              smartblockCategories = measurement.smartblockDetails;
+            }
           } catch (e) {
             console.error('Failed to parse smartblockDetails:', e);
+            smartblockCategories = null;
           }
         }
         
@@ -252,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           smartblockStatus: measurement?.smartblockStatus ?? 'pending',
           smartblockCategories,
           lastMeasured: measurement?.measuredAt 
-            ? new Date(measurement.measuredAt).toISOString() 
+            ? measurement.measuredAt  // DB에 저장된 한국 시간을 그대로 사용
             : null,
           searchVolume,
           measurementInterval: keyword.measurementInterval || '24h',
@@ -375,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (blogResults.length === 0 && categories.length === 0) {
           const measurement = await storage.createMeasurement({
             keywordId: keyword.id,
-            measuredAt: new Date(),
+            measuredAt: getKoreanTime(),
             rankSmartblock: null,
             smartblockStatus: 'BLOCK_MISSING',
             smartblockConfidence: '0',
@@ -483,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const measurement = await storage.createMeasurement({
           keywordId: keyword.id,
-          measuredAt: new Date(),
+          measuredAt: getKoreanTime(),
           rankSmartblock: rankResult.rank,
           smartblockStatus,
           smartblockConfidence: rankResult.confidence.toFixed(2),
@@ -517,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         const measurement = await storage.createMeasurement({
           keywordId: keyword.id,
-          measuredAt: new Date(),
+          measuredAt: getKoreanTime(),
           rankSmartblock: null,
           smartblockStatus: 'ERROR',
           smartblockConfidence: '0',

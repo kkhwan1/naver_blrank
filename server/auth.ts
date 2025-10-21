@@ -7,14 +7,15 @@ import type { User } from "@shared/schema";
 passport.use(
   new LocalStrategy(async (username, password, done) => {
     try {
+      const bcrypt = await import('bcrypt');
       const user = await storage.getUserByUsername(username);
-      
+
       if (!user) {
         return done(null, false, { message: "아이디 또는 비밀번호가 틀렸습니다." });
       }
 
-      const isValidPassword = password === user.password;
-      
+      const isValidPassword = await bcrypt.compare(password, user.password);
+
       if (!isValidPassword) {
         return done(null, false, { message: "아이디 또는 비밀번호가 틀렸습니다." });
       }

@@ -5,6 +5,14 @@ import { SmartBlockParser } from './smartblock-parser';
 import { NaverSearchAdClient } from './naver-searchad-client';
 import { hiddenReasonClassifier } from './hidden-reason-classifier';
 
+// 한국 시간(KST) 기준 현재 시간 생성 함수
+function getKoreanTime(): Date {
+  // UTC 시간에 9시간을 더해서 한국 시간으로 변환
+  const now = new Date();
+  const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  return kstTime;
+}
+
 export class MeasurementScheduler {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
   private storage: IStorage;
@@ -105,7 +113,7 @@ export class MeasurementScheduler {
           if (blogResults.length === 0 && categories.length === 0) {
             await this.storage.createMeasurement({
               keywordId: keyword.id,
-              measuredAt: new Date(),
+              measuredAt: getKoreanTime(),
               rankSmartblock: null,
               smartblockStatus: 'BLOCK_MISSING',
               smartblockConfidence: '0',
@@ -209,7 +217,7 @@ export class MeasurementScheduler {
           // Save measurement
           await this.storage.createMeasurement({
             keywordId: keyword.id,
-            measuredAt: new Date(),
+            measuredAt: getKoreanTime(),
             rankSmartblock: rankResult.rank,
             smartblockStatus,
             smartblockConfidence: rankResult.confidence.toFixed(2),
@@ -232,7 +240,7 @@ export class MeasurementScheduler {
           // Save error measurement
           await this.storage.createMeasurement({
             keywordId: keyword.id,
-            measuredAt: new Date(),
+            measuredAt: getKoreanTime(),
             rankSmartblock: null,
             smartblockStatus: 'ERROR',
             smartblockConfidence: '0',

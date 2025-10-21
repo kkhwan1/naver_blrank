@@ -533,7 +533,12 @@ class PostgresStorage implements IStorage {
   private db;
 
   constructor() {
-    const client = postgres(process.env.DATABASE_URL!);
+    const client = postgres(process.env.DATABASE_URL!, {
+      // Transaction Mode Pooler handles SSL automatically
+      connection: {
+        application_name: 'naver_blog_rank_tracker'
+      }
+    });
     this.db = drizzle(client);
   }
 
@@ -934,7 +939,9 @@ class PostgresStorage implements IStorage {
     const dateMap = new Map<string, {ranks: number[], count: number}>();
 
     filteredMeasurements.forEach(m => {
-      const dateKey = m.measuredAt.toISOString().split('T')[0];
+      // 한국 시간대로 날짜 키 생성
+      const kstDate = new Date(m.measuredAt.toLocaleString("en-US", {timeZone: "Asia/Seoul"}));
+      const dateKey = kstDate.toISOString().split('T')[0];
       if (!dateMap.has(dateKey)) {
         dateMap.set(dateKey, { ranks: [], count: 0 });
       }

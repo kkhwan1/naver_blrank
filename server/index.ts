@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -17,6 +18,7 @@ app.use(express.urlencoded({ extended: false }));
 const PgStore = connectPgSimple(session);
 const sessionClient = postgres(process.env.DATABASE_URL!, {
   max: 1,
+  // Transaction Mode Pooler handles SSL automatically
 });
 
 app.use(
@@ -34,8 +36,9 @@ app.use(
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production" && process.env.USE_HTTPS === "true",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
     },
   })
 );
@@ -74,47 +77,66 @@ app.use((req, res, next) => {
   next();
 });
 
+// Test database connection on startup
+async function testDatabaseConnection() {
+  try {
+    log('Testing database connection...');
+    // Mask password in DATABASE_URL for logging
+    const dbUrl = process.env.DATABASE_URL || '';
+    const maskedUrl = dbUrl.replace(/:([^@]+)@/, ':****@');
+    log(`Connection string: ${maskedUrl}`);
+
+    const users = await storage.getAllUsers();
+    log(`✅ Database connection successful. Found ${users.length} users.`);
+    return true;
+  } catch (error: any) {
+    log('❌ Database connection failed:');
+    log(`Error message: ${error.message}`);
+    if (error.code) log(`Error code: ${error.code}`);
+    if (error.detail) log(`Error detail: ${error.detail}`);
+    log('Full error:', error);
+    return false;
+  }
+}
+
 // Auto-create admin accounts on startup if they don't exist
 async function ensureAdminAccounts() {
+  const bcrypt = await import('bcrypt');
   const adminAccounts = [
-    { username: 'lee.kkhwan@gmail.com', password: 'test1234' },
-    { username: 'keywordsolution', password: 'test1234' },
+    { username: 'lee.kkhwan@gmail.com', password: 'test123' },
+    { username: 'keywordsolution', password: 'test123' },
   ];
-
-  // PostgreSQL direct connection for password updates
-  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
 
   for (const account of adminAccounts) {
     try {
       const existingAdmin = await storage.getUserByUsername(account.username);
       if (!existingAdmin) {
+        const hashedPassword = await bcrypt.hash(account.password, 10);
         await storage.createUser({
           username: account.username,
-          password: account.password,
+          password: hashedPassword,  // Store as hashed password
           role: 'admin',
         });
         log(`✅ Admin account created: ${account.username}`);
       } else {
-        // Update existing admin password to plaintext
-        await sql`
-          UPDATE users 
-          SET password = ${account.password}
-          WHERE username = ${account.username}
-        `;
-        log(`✅ Admin password updated: ${account.username}`);
+        log(`✅ Admin account already exists: ${account.username}`);
       }
     } catch (error) {
-      log(`Failed to update admin account ${account.username}: ` + error);
+      log(`Failed to create admin account ${account.username}: ` + error);
     }
   }
-
-  await sql.end();
 }
 
 (async () => {
-  // Ensure admin accounts exist before starting server
-  await ensureAdminAccounts();
+  // Test database connection first
+  const dbConnected = await testDatabaseConnection();
+  if (!dbConnected) {
+    log('⚠️  Continuing despite database connection issues...');
+  }
   
+  // Create admin accounts
+  await ensureAdminAccounts();
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -128,7 +150,7 @@ async function ensureAdminAccounts() {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  if (false && app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
@@ -156,11 +178,8 @@ async function ensureAdminAccounts() {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  const host = '0.0.0.0'; // 모든 인터페이스에서 접근 가능하도록 변경
+  server.listen(port, host, () => {
+    log(`serving on ${host}:${port}`);
   });
 })();

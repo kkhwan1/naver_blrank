@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import {
   Table,
   TableBody,
@@ -374,7 +376,27 @@ export default function KeywordTable({ keywords, onRowClick, onViewDetails, onDe
                   </button>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell whitespace-nowrap">
-                  <span className="text-sm text-muted-foreground">{keyword.lastMeasured}</span>
+                  {keyword.lastMeasured ? (
+                    (() => {
+                      try {
+                        const date = new Date(keyword.lastMeasured);
+                        if (isNaN(date.getTime())) {
+                          return <span className="text-sm text-muted-foreground">측정 대기 중</span>;
+                        }
+                        return (
+                          <div className="flex flex-col text-sm text-muted-foreground">
+                            <span>{format(date, 'yyyy년 M월 d일', { locale: ko })}</span>
+                            <span>{format(date, 'a h시 m분', { locale: ko })}</span>
+                          </div>
+                        );
+                      } catch (error) {
+                        console.error('Date formatting error:', error);
+                        return <span className="text-sm text-muted-foreground">측정 대기 중</span>;
+                      }
+                    })()
+                  ) : (
+                    <span className="text-sm text-muted-foreground">측정 대기 중</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>

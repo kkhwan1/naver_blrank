@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import {
   Dialog,
   DialogContent,
@@ -101,14 +103,17 @@ export default function MeasurementDetailDialog({
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return '측정 대기 중';
+      }
+      // 키워드 테이블과 동일한 형식 사용
+      return `${format(date, 'yyyy년 M월 d일', { locale: ko })} ${format(date, 'a h시 m분', { locale: ko })}`;
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return '측정 대기 중';
+    }
   };
 
   const getStatusBadge = (status: string) => {

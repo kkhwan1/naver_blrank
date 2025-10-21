@@ -106,7 +106,9 @@ export default function Dashboard() {
       return res.json();
     },
     onSuccess: (data: any, variables) => {
+      // 즉시 쿼리 무효화 및 재fetch
       queryClient.invalidateQueries({ queryKey: ['/api/keywords'] });
+      queryClient.refetchQueries({ queryKey: ['/api/keywords'] });  // 추가
       queryClient.invalidateQueries({ queryKey: ['/api/measurements', variables.id] });
       toast({
         title: '측정 완료',
@@ -215,7 +217,7 @@ export default function Dashboard() {
     keyword: k.keyword,
     rank: k.rank,
     change: k.change,
-    lastMeasured: formatLastMeasured(k.lastMeasured),
+    lastMeasured: k.lastMeasured,
     lastMeasuredTimestamp: k.lastMeasured,
     targetUrl: k.targetUrl,
     status: mapStatusToKeywordStatus(k.smartblockStatus, k.rank),
